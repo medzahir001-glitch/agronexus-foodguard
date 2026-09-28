@@ -15,8 +15,6 @@ st.set_page_config(
     layout="wide"
 )
 
-CSV_FILE = "agronexus_assessments.csv"
-
 
 # =========================================================
 # STYLE
@@ -25,32 +23,50 @@ CSV_FILE = "agronexus_assessments.csv"
 st.markdown(
     """
     <style>
-
     .main-title {
         font-size: 42px;
-        font-weight: 800;
+        font-weight: 700;
         margin-bottom: 5px;
     }
 
     .subtitle {
         font-size: 18px;
         color: #666;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
     }
 
-    .risk-box {
-        padding: 25px;
-        border-radius: 15px;
+    .risk-high {
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #ffe5e5;
+        border: 2px solid #d9534f;
+        color: #8a1f1f;
+        font-size: 26px;
+        font-weight: 700;
         text-align: center;
-        margin: 15px 0;
-        border: 1px solid #ddd;
     }
 
-    .small-note {
-        color: #666;
-        font-size: 14px;
+    .risk-medium {
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #fff3cd;
+        border: 2px solid #f0ad4e;
+        color: #856404;
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
     }
 
+    .risk-low {
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #e5f6e9;
+        border: 2px solid #5cb85c;
+        color: #286b2f;
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -68,14 +84,14 @@ st.markdown(
 
 st.markdown(
     '<div class="subtitle">'
-    'Prototype intelligent d’évaluation des risques de sécurité des aliments'
+    'Prototype intelligent d’évaluation des risques liés à la sécurité alimentaire'
     '</div>',
     unsafe_allow_html=True
 )
 
 st.info(
-    "Prototype expérimental d’aide à la décision pour l’évaluation "
-    "préliminaire des risques dans les produits laitiers."
+    "Produit pilote : Lait pasteurisé | "
+    "Système expérimental d'aide à la décision."
 )
 
 
@@ -83,450 +99,290 @@ st.info(
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title("🛡️ FoodGuard")
+st.sidebar.header("Paramètres du lot")
 
-st.sidebar.markdown(
-    """
-    **Produit analysé :**
-
-    🥛 Lait pasteurisé
-
-    **Fonction :**
-
-    Évaluation préliminaire du niveau de risque.
-    """
+batch_id = st.sidebar.text_input(
+    "Numéro de lot",
+    value="LOT-004"
 )
 
-st.sidebar.markdown("---")
+product_name = st.sidebar.text_input(
+    "Produit",
+    value="Lait pasteurisé"
+)
 
-st.sidebar.caption(
-    "AgroNexus FoodGuard — Prototype de recherche"
+temperature = st.sidebar.number_input(
+    "Température de stockage (°C)",
+    min_value=-20.0,
+    max_value=50.0,
+    value=4.0,
+    step=0.1
+)
+
+storage_days = st.sidebar.number_input(
+    "Durée de stockage (jours)",
+    min_value=0,
+    max_value=365,
+    value=2,
+    step=1
+)
+
+ph = st.sidebar.number_input(
+    "pH",
+    min_value=0.0,
+    max_value=14.0,
+    value=6.6,
+    step=0.1
+)
+
+cold_chain_broken = st.sidebar.selectbox(
+    "Interruption de la chaîne du froid ?",
+    ["Non", "Oui"]
+)
+
+hygiene_controlled = st.sidebar.selectbox(
+    "Conditions d'hygiène maîtrisées ?",
+    ["Oui", "Non"]
+)
+
+pasteurized = st.sidebar.selectbox(
+    "Produit pasteurisé ?",
+    ["Oui", "Non"]
 )
 
 
 # =========================================================
-# INPUT FORM
+# CONVERSION
 # =========================================================
 
-st.header("🔬 Nouvelle analyse")
-
-with st.form("risk_assessment_form"):
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        batch_id = st.text_input(
-            "Numéro de lot",
-            placeholder="Exemple : LOT-004"
-        )
-
-        product_name = st.text_input(
-            "Nom du produit",
-            value="Lait pasteurisé"
-        )
-
-        temperature = st.number_input(
-            "Température de stockage (°C)",
-            min_value=-20.0,
-            max_value=50.0,
-            value=4.0,
-            step=0.1
-        )
-
-        storage_days = st.number_input(
-            "Durée de stockage (jours)",
-            min_value=0,
-            max_value=365,
-            value=2,
-            step=1
-        )
-
-    with col2:
-
-        ph = st.number_input(
-            "Valeur pH",
-            min_value=0.0,
-            max_value=14.0,
-            value=6.6,
-            step=0.1
-        )
-
-        cold_chain_answer = st.selectbox(
-            "Interruption de la chaîne du froid ?",
-            ["Non", "Oui"]
-        )
-
-        hygiene_answer = st.selectbox(
-            "Conditions d'hygiène maîtrisées ?",
-            ["Oui", "Non"]
-        )
-
-        pasteurization_answer = st.selectbox(
-            "Produit pasteurisé ?",
-            ["Oui", "Non"]
-        )
-
-    submitted = st.form_submit_button(
-        "🚀 Lancer l'analyse",
-        use_container_width=True
-    )
+cold_chain_value = cold_chain_broken == "Oui"
+hygiene_value = hygiene_controlled == "Oui"
+pasteurized_value = pasteurized == "Oui"
 
 
 # =========================================================
-# ANALYSIS
+# ANALYSE
 # =========================================================
 
-if submitted:
+st.subheader("Analyse du lot")
 
-    if not batch_id.strip():
-
-        st.error(
-            "Veuillez saisir un numéro de lot."
-        )
-
-    else:
-
-        cold_chain_broken = (
-            cold_chain_answer == "Oui"
-        )
-
-        hygiene_controlled = (
-            hygiene_answer == "Oui"
-        )
-
-        pasteurized = (
-            pasteurization_answer == "Oui"
-        )
-
-        try:
-
-            report = assess_dairy_food_safety_risk(
-
-                temperature=temperature,
-
-                storage_days=storage_days,
-
-                ph=ph,
-
-                cold_chain_broken=cold_chain_broken,
-
-                hygiene_controlled=hygiene_controlled,
-
-                pasteurized=pasteurized,
-
-                batch_id=batch_id,
-
-                product_name=product_name
-            )
-
-            st.session_state["last_report"] = report
-
-            st.session_state["last_inputs"] = {
-
-                "temperature": temperature,
-
-                "storage_days": storage_days,
-
-                "ph": ph,
-
-                "cold_chain_broken": cold_chain_broken,
-
-                "hygiene_controlled": hygiene_controlled,
-
-                "pasteurized": pasteurized
-            }
-
-        except Exception as e:
-
-            st.error(
-                f"Erreur pendant l'analyse : {e}"
-            )
-
-
-# =========================================================
-# DISPLAY RESULT
-# =========================================================
-
-if "last_report" in st.session_state:
-
-    report = st.session_state["last_report"]
-
-    inputs = st.session_state["last_inputs"]
-
-    st.markdown("---")
-
-    st.header("📊 Résultat de l'analyse")
-
-    risk_score = report.get(
-        "risk_score",
-        0
-    )
-
-    risk_level = report.get(
-        "risk_level",
-        "Inconnu"
-    )
-
-    confidence = report.get(
-        "confidence",
-        0
-    )
-
-    # -----------------------------------------------------
-    # KPI
-    # -----------------------------------------------------
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-
-        st.metric(
-            "Risk Score",
-            f"{risk_score}/100"
-        )
-
-    with col2:
-
-        st.metric(
-            "Niveau de risque",
-            risk_level
-        )
-
-    with col3:
-
-        st.metric(
-            "Confiance du prototype",
-            f"{confidence:.1f}%"
-        )
-
-    # -----------------------------------------------------
-    # RISK DISPLAY
-    # -----------------------------------------------------
-
-    if risk_level == "Élevé":
-
-        st.error(
-            f"🔴 RISQUE ÉLEVÉ — Score : {risk_score}/100"
-        )
-
-    elif risk_level == "Modéré":
-
-        st.warning(
-            f"🟠 RISQUE MODÉRÉ — Score : {risk_score}/100"
-        )
-
-    else:
-
-        st.success(
-            f"🟢 RISQUE FAIBLE — Score : {risk_score}/100"
-        )
-
-    # -----------------------------------------------------
-    # LOT INFORMATION
-    # -----------------------------------------------------
-
-    st.subheader("📦 Informations du lot")
-
-    info_col1, info_col2, info_col3 = st.columns(3)
-
-    with info_col1:
-
-        st.write(
-            f"**Lot :** {report.get('batch_id', '')}"
-        )
-
-        st.write(
-            f"**Produit :** {report.get('product_name', '')}"
-        )
-
-    with info_col2:
-
-        st.write(
-            f"**Température :** "
-            f"{inputs['temperature']} °C"
-        )
-
-        st.write(
-            f"**Durée :** "
-            f"{inputs['storage_days']} jours"
-        )
-
-    with info_col3:
-
-        st.write(
-            f"**pH :** {inputs['ph']}"
-        )
-
-        st.write(
-            f"**Pasteurisé :** "
-            f"{'Oui' if inputs['pasteurized'] else 'Non'}"
-        )
-
-    # -----------------------------------------------------
-    # FACTORS
-    # -----------------------------------------------------
-
-    st.subheader("🔎 Facteurs analysés")
-
-    factors = report.get(
-        "factors",
-        {}
-    )
-
-    factor_rows = []
-
-    factor_names = {
-
-        "temperature": "Température",
-
-        "storage_duration": "Durée de stockage",
-
-        "ph": "pH",
-
-        "cold_chain": "Chaîne du froid",
-
-        "hygiene": "Hygiène",
-
-        "pasteurization": "Pasteurisation"
-    }
-
-    for key, label in factor_names.items():
-
-        factor = factors.get(
-            key,
-            {}
-        )
-
-        factor_rows.append({
-
-            "Facteur": label,
-
-            "Score": factor.get(
-                "score",
-                0
-            ),
-
-            "Niveau": factor.get(
-                "level",
-                ""
-            ),
-
-            "Observation": factor.get(
-                "reason",
-                ""
-            )
-        })
-
-    factor_df = pd.DataFrame(
-        factor_rows
-    )
-
-    st.dataframe(
-        factor_df,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # -----------------------------------------------------
-    # REASONS
-    # -----------------------------------------------------
-
-    st.subheader("⚠️ Facteurs de risque détectés")
-
-    reasons = report.get(
-        "reasons",
-        []
-    )
-
-    if reasons:
-
-        for reason in reasons:
-
-            st.warning(
-                f"• {reason}"
-            )
-
-    else:
-
-        st.success(
-            "Aucun facteur de risque détecté "
-            "par les règles actuelles du prototype."
-        )
-
-    # -----------------------------------------------------
-    # RECOMMENDATIONS
-    # -----------------------------------------------------
-
-    st.subheader("💡 Recommandations")
-
-    recommendations = report.get(
-        "recommendations",
-        []
-    )
-
-    for recommendation in recommendations:
-
-        st.info(
-            f"• {recommendation}"
-        )
-
-    # -----------------------------------------------------
-    # DISCLAIMER
-    # -----------------------------------------------------
-
-    st.markdown("---")
-
-    st.warning(
-        report.get(
-            "disclaimer",
-            "Résultat expérimental d'aide à la décision. "
-            "Ne remplace pas les analyses de laboratoire "
-            "ni la décision du responsable qualité."
-        )
-    )
-
-
-# =========================================================
-# HISTORICAL DATA
-# =========================================================
-
-st.markdown("---")
-
-st.header("📚 Historique des analyses")
-
-if os.path.exists(CSV_FILE):
+if st.button("🔍 Lancer l'analyse", use_container_width=True):
 
     try:
 
-        history_df = pd.read_csv(
-            CSV_FILE,
-            sep=None,
-            engine="python"
+        report = assess_dairy_food_safety_risk(
+            temperature=temperature,
+            storage_days=storage_days,
+            ph=ph,
+            cold_chain_broken=cold_chain_value,
+            hygiene_controlled=hygiene_value,
+            pasteurized=pasteurized_value,
+            batch_id=batch_id,
+            product_name=product_name
         )
 
-        if not history_df.empty:
+        if report.get("status") != "SUCCESS":
+
+            st.error("L'analyse n'a pas pu être effectuée.")
+
+        else:
+
+            risk_score = report.get("risk_score", 0)
+            risk_level = report.get("risk_level", "Inconnu")
+            confidence = report.get("confidence", 0)
+
+            # -------------------------------------------------
+            # SCORE
+            # -------------------------------------------------
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Risk Score",
+                    f"{risk_score}/100"
+                )
+
+            with col2:
+                st.metric(
+                    "Niveau de risque",
+                    risk_level
+                )
+
+            with col3:
+                st.metric(
+                    "Confiance du prototype",
+                    f"{confidence:.1f}%"
+                )
+
+            # -------------------------------------------------
+            # RISK DISPLAY
+            # -------------------------------------------------
+
+            if risk_level == "Élevé":
+
+                st.markdown(
+                    '<div class="risk-high">'
+                    '⚠️ RISQUE ÉLEVÉ'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+
+            elif risk_level in ["Moyen", "Modéré"]:
+
+                st.markdown(
+                    '<div class="risk-medium">'
+                    '⚠️ RISQUE MOYEN'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+
+            else:
+
+                st.markdown(
+                    '<div class="risk-low">'
+                    '✓ RISQUE FAIBLE'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+
+
+            # -------------------------------------------------
+            # FACTEURS
+            # -------------------------------------------------
+
+            st.subheader("Facteurs analysés")
+
+            factors = report.get("factors", {})
+
+            factor_rows = []
+
+            factor_names = {
+                "temperature": "Température",
+                "storage_duration": "Durée de stockage",
+                "ph": "pH",
+                "cold_chain": "Chaîne du froid",
+                "hygiene": "Hygiène",
+                "pasteurization": "Pasteurisation"
+            }
+
+            for key, label in factor_names.items():
+
+                factor = factors.get(key, {})
+
+                factor_rows.append({
+                    "Facteur": label,
+                    "Score": factor.get("score", 0),
+                    "Niveau": factor.get("level", ""),
+                    "Évaluation": factor.get("reason", "")
+                })
+
+            factor_df = pd.DataFrame(factor_rows)
 
             st.dataframe(
-                history_df,
+                factor_df,
                 use_container_width=True,
                 hide_index=True
             )
 
-            st.download_button(
-                label="⬇️ Télécharger l'historique CSV",
-                data=history_df.to_csv(
-                    index=False
-                ).encode("utf-8-sig"),
-                file_name="agronexus_assessments.csv",
-                mime="text/csv"
+
+            # -------------------------------------------------
+            # RAISONS
+            # -------------------------------------------------
+
+            st.subheader("Raisons identifiées")
+
+            reasons = report.get("reasons", [])
+
+            if reasons:
+
+                for reason in reasons:
+                    st.warning(reason)
+
+            else:
+
+                st.success(
+                    "Aucun facteur de risque détecté par les règles "
+                    "actuelles du prototype."
+                )
+
+
+            # -------------------------------------------------
+            # RECOMMANDATIONS
+            # -------------------------------------------------
+
+            st.subheader("Recommandations")
+
+            recommendations = report.get(
+                "recommendations",
+                []
             )
 
-        else:
+            for recommendation in recommendations:
+                st.write("• " + recommendation)
 
-            st.info(
-                "Aucune analyse enregistrée."
+
+            # -------------------------------------------------
+            # INFORMATIONS DU LOT
+            # -------------------------------------------------
+
+            st.subheader("Informations du lot")
+
+            lot_data = pd.DataFrame([{
+                "Lot": batch_id,
+                "Produit": product_name,
+                "Température °C": temperature,
+                "Stockage jours": storage_days,
+                "pH": ph,
+                "Chaîne du froid interrompue": cold_chain_value,
+                "Hygiène maîtrisée": hygiene_value,
+                "Pasteurisé": pasteurized_value
+            }])
+
+            st.dataframe(
+                lot_data,
+                use_container_width=True,
+                hide_index=True
             )
+
+
+            # -------------------------------------------------
+            # DISCLAIMER
+            # -------------------------------------------------
+
+            st.warning(
+                report.get(
+                    "disclaimer",
+                    "Résultat expérimental d'aide à la décision."
+                )
+            )
+
+
+# =========================================================
+# HISTORIQUE
+# =========================================================
+
+st.divider()
+
+st.subheader("Historique des analyses")
+
+csv_file = "agronexus_assessments.csv"
+
+if os.path.exists(csv_file):
+
+    try:
+
+        history = pd.read_csv(
+            csv_file,
+            sep=None,
+            engine="python"
+        )
+
+        st.dataframe(
+            history,
+            use_container_width=True,
+            hide_index=True
+        )
 
     except Exception as e:
 
@@ -537,7 +393,7 @@ if os.path.exists(CSV_FILE):
 else:
 
     st.info(
-        "Le fichier historique n'est pas encore disponible."
+        "Aucun historique disponible pour le moment."
     )
 
 
@@ -545,14 +401,10 @@ else:
 # FOOTER
 # =========================================================
 
-st.markdown("---")
+st.divider()
 
-st.markdown(
-    """
-    <div class="small-note">
-    AgroNexus FoodGuard — Prototype de recherche en sécurité alimentaire.<br>
-    Version expérimentale — Ne remplace pas les analyses de laboratoire.
-    </div>
-    """,
-    unsafe_allow_html=True
+st.caption(
+    "AgroNexus FoodGuard — Prototype de recherche en sécurité alimentaire. "
+    "Les résultats ne remplacent pas les analyses de laboratoire ni "
+    "la décision du responsable qualité."
 )
