@@ -5,9 +5,9 @@ import os
 from foodguard_engine import assess_dairy_food_safety_risk
 
 
-# =========================================================
-# CONFIGURATION
-# =========================================================
+# =====================================================
+# PAGE CONFIGURATION
+# =====================================================
 
 st.set_page_config(
     page_title="AgroNexus FoodGuard",
@@ -16,13 +16,21 @@ st.set_page_config(
 )
 
 
-# =========================================================
-# STYLE
-# =========================================================
+# =====================================================
+# CONFIGURATION
+# =====================================================
+
+CSV_FILE = "agronexus_assessments.csv"
+
+
+# =====================================================
+# CUSTOM STYLE
+# =====================================================
 
 st.markdown(
     """
     <style>
+
     .main-title {
         font-size: 42px;
         font-weight: 700;
@@ -31,51 +39,26 @@ st.markdown(
 
     .subtitle {
         font-size: 18px;
-        color: #666;
+        color: #666666;
         margin-bottom: 25px;
     }
 
-    .risk-high {
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #ffe5e5;
-        border: 2px solid #d9534f;
-        color: #8a1f1f;
-        font-size: 26px;
-        font-weight: 700;
-        text-align: center;
+    .section-title {
+        font-size: 25px;
+        font-weight: 650;
+        margin-top: 20px;
+        margin-bottom: 15px;
     }
 
-    .risk-medium {
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #fff3cd;
-        border: 2px solid #f0ad4e;
-        color: #856404;
-        font-size: 26px;
-        font-weight: 700;
-        text-align: center;
-    }
-
-    .risk-low {
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #e5f6e9;
-        border: 2px solid #5cb85c;
-        color: #286b2f;
-        font-size: 26px;
-        font-weight: 700;
-        text-align: center;
-    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 
-# =========================================================
+# =====================================================
 # HEADER
-# =========================================================
+# =====================================================
 
 st.markdown(
     '<div class="main-title">🛡️ AgroNexus FoodGuard</div>',
@@ -84,89 +67,118 @@ st.markdown(
 
 st.markdown(
     '<div class="subtitle">'
-    'Prototype intelligent d’évaluation des risques liés à la sécurité alimentaire'
+    'Prototype intelligent d’évaluation des risques en sécurité alimentaire'
     '</div>',
     unsafe_allow_html=True
 )
 
 st.info(
-    "Produit pilote : Lait pasteurisé | "
-    "Système expérimental d'aide à la décision."
+    "Produit actuellement étudié : Lait pasteurisé | "
+    "Outil expérimental d’aide à la décision."
 )
 
 
-# =========================================================
-# SIDEBAR
-# =========================================================
+# =====================================================
+# NEW ANALYSIS
+# =====================================================
 
-st.sidebar.header("Paramètres du lot")
+st.header("🔬 Nouvelle analyse")
 
-batch_id = st.sidebar.text_input(
-    "Numéro de lot",
-    value="LOT-004"
+col1, col2 = st.columns(2)
+
+
+# =====================================================
+# LEFT COLUMN
+# =====================================================
+
+with col1:
+
+    batch_id = st.text_input(
+        "Numéro de lot",
+        placeholder="Exemple : LOT-004"
+    )
+
+    product_name = st.text_input(
+        "Nom du produit",
+        value="Lait pasteurisé"
+    )
+
+    temperature = st.number_input(
+        "Température de stockage (°C)",
+        min_value=-20.0,
+        max_value=50.0,
+        value=4.0,
+        step=0.1
+    )
+
+    storage_days = st.number_input(
+        "Durée de stockage (jours)",
+        min_value=0,
+        max_value=365,
+        value=2,
+        step=1
+    )
+
+
+# =====================================================
+# RIGHT COLUMN
+# =====================================================
+
+with col2:
+
+    ph = st.number_input(
+        "Valeur pH",
+        min_value=0.0,
+        max_value=14.0,
+        value=6.6,
+        step=0.1
+    )
+
+    cold_chain_broken = st.checkbox(
+        "Interruption de la chaîne du froid"
+    )
+
+    hygiene_controlled = st.checkbox(
+        "Conditions d’hygiène maîtrisées",
+        value=True
+    )
+
+    pasteurized = st.checkbox(
+        "Produit pasteurisé",
+        value=True
+    )
+
+
+# =====================================================
+# ANALYSIS BUTTON
+# =====================================================
+
+st.divider()
+
+start_analysis = st.button(
+    "🚀 Lancer l'analyse",
+    use_container_width=True
 )
 
-product_name = st.sidebar.text_input(
-    "Produit",
-    value="Lait pasteurisé"
-)
 
-temperature = st.sidebar.number_input(
-    "Température de stockage (°C)",
-    min_value=-20.0,
-    max_value=50.0,
-    value=4.0,
-    step=0.1
-)
+if start_analysis:
 
-storage_days = st.sidebar.number_input(
-    "Durée de stockage (jours)",
-    min_value=0,
-    max_value=365,
-    value=2,
-    step=1
-)
+    # -------------------------------------------------
+    # VALIDATION
+    # -------------------------------------------------
 
-ph = st.sidebar.number_input(
-    "pH",
-    min_value=0.0,
-    max_value=14.0,
-    value=6.6,
-    step=0.1
-)
+    if not batch_id.strip():
 
-cold_chain_broken = st.sidebar.selectbox(
-    "Interruption de la chaîne du froid ?",
-    ["Non", "Oui"]
-)
+        st.warning(
+            "Veuillez saisir un numéro de lot."
+        )
 
-hygiene_controlled = st.sidebar.selectbox(
-    "Conditions d'hygiène maîtrisées ?",
-    ["Oui", "Non"]
-)
-
-pasteurized = st.sidebar.selectbox(
-    "Produit pasteurisé ?",
-    ["Oui", "Non"]
-)
+        st.stop()
 
 
-# =========================================================
-# CONVERSION
-# =========================================================
-
-cold_chain_value = cold_chain_broken == "Oui"
-hygiene_value = hygiene_controlled == "Oui"
-pasteurized_value = pasteurized == "Oui"
-
-
-# =========================================================
-# ANALYSE
-# =========================================================
-
-st.subheader("Analyse du lot")
-
-if st.button("🔍 Lancer l'analyse", use_container_width=True):
+    # -------------------------------------------------
+    # RUN ENGINE
+    # -------------------------------------------------
 
     try:
 
@@ -174,237 +186,379 @@ if st.button("🔍 Lancer l'analyse", use_container_width=True):
             temperature=temperature,
             storage_days=storage_days,
             ph=ph,
-            cold_chain_broken=cold_chain_value,
-            hygiene_controlled=hygiene_value,
-            pasteurized=pasteurized_value,
+            cold_chain_broken=cold_chain_broken,
+            hygiene_controlled=hygiene_controlled,
+            pasteurized=pasteurized,
             batch_id=batch_id,
             product_name=product_name
         )
 
-        if report.get("status") != "SUCCESS":
+    except Exception as error:
 
-            st.error("L'analyse n'a pas pu être effectuée.")
+        st.error(
+            "Une erreur est survenue pendant l'analyse."
+        )
+
+        st.code(str(error))
+
+        st.stop()
+
+
+    # -------------------------------------------------
+    # SUCCESS
+    # -------------------------------------------------
+
+    st.success(
+        "Analyse terminée avec succès."
+    )
+
+
+    # =================================================
+    # RESULT
+    # =================================================
+
+    st.header("📊 Résultat de l'analyse")
+
+
+    result_col1, result_col2, result_col3 = st.columns(3)
+
+
+    with result_col1:
+
+        st.metric(
+            "Risk Score",
+            f"{report['risk_score']}/100"
+        )
+
+
+    with result_col2:
+
+        st.metric(
+            "Niveau de risque",
+            report["risk_level"]
+        )
+
+
+    with result_col3:
+
+        st.metric(
+            "Confidence",
+            f"{report['confidence']:.1f}%"
+        )
+
+
+    # -------------------------------------------------
+    # RISK STATUS
+    # -------------------------------------------------
+
+    if report["risk_level"] == "Élevé":
+
+        st.error(
+            "🔴 RISQUE ÉLEVÉ"
+        )
+
+    elif report["risk_level"] == "Modéré":
+
+        st.warning(
+            "🟠 RISQUE MODÉRÉ"
+        )
+
+    else:
+
+        st.success(
+            "🟢 RISQUE FAIBLE"
+        )
+
+
+    # =================================================
+    # FACTORS
+    # =================================================
+
+    st.subheader("🔎 Facteurs analysés")
+
+
+    factor_names = {
+
+        "temperature": "Température",
+
+        "storage_duration": "Durée de stockage",
+
+        "ph": "pH",
+
+        "cold_chain": "Chaîne du froid",
+
+        "hygiene": "Hygiène",
+
+        "pasteurization": "Pasteurisation"
+
+    }
+
+
+    factor_data = []
+
+
+    for factor_name, factor in report["factors"].items():
+
+        factor_data.append(
+            {
+                "Facteur": factor_names.get(
+                    factor_name,
+                    factor_name
+                ),
+
+                "Score": factor["score"],
+
+                "Niveau": factor["level"],
+
+                "Explication": factor["reason"]
+            }
+        )
+
+
+    factors_df = pd.DataFrame(
+        factor_data
+    )
+
+
+    st.dataframe(
+        factors_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    # =================================================
+    # RISK FACTORS
+    # =================================================
+
+    st.subheader(
+        "⚠️ Facteurs de risque détectés"
+    )
+
+
+    if report["reasons"]:
+
+        for reason in report["reasons"]:
+
+            st.write(
+                "•",
+                reason
+            )
+
+    else:
+
+        st.write(
+            "Aucun facteur de risque détecté "
+            "selon les règles actuelles du prototype."
+        )
+
+
+    # =================================================
+    # RECOMMENDATIONS
+    # =================================================
+
+    st.subheader(
+        "💡 Recommandations"
+    )
+
+
+    for recommendation in report["recommendations"]:
+
+        st.write(
+            "•",
+            recommendation
+        )
+
+
+    # =================================================
+    # SAVE RESULT
+    # =================================================
+
+    row = {
+
+        "analysis_date":
+            report["analysis_date"],
+
+        "batch_id":
+            report["batch_id"],
+
+        "product_name":
+            report["product_name"],
+
+        "temperature_celsius":
+            temperature,
+
+        "storage_days":
+            storage_days,
+
+        "ph":
+            ph,
+
+        "cold_chain_broken":
+            cold_chain_broken,
+
+        "hygiene_controlled":
+            hygiene_controlled,
+
+        "pasteurized":
+            pasteurized,
+
+        "temperature_score":
+            report["factors"]["temperature"]["score"],
+
+        "storage_score":
+            report["factors"]["storage_duration"]["score"],
+
+        "ph_score":
+            report["factors"]["ph"]["score"],
+
+        "cold_chain_score":
+            report["factors"]["cold_chain"]["score"],
+
+        "hygiene_score":
+            report["factors"]["hygiene"]["score"],
+
+        "pasteurization_score":
+            report["factors"]["pasteurization"]["score"],
+
+        "risk_score":
+            report["risk_score"],
+
+        "risk_level":
+            report["risk_level"],
+
+        "confidence":
+            report["confidence"],
+
+        "reasons":
+            " | ".join(report["reasons"])
+            if report["reasons"]
+            else "Aucun facteur de risque détecté",
+
+        "recommendations":
+            " | ".join(report["recommendations"])
+
+    }
+
+
+    new_row = pd.DataFrame(
+        [row]
+    )
+
+
+    # -------------------------------------------------
+    # UPDATE CSV
+    # -------------------------------------------------
+
+    try:
+
+        if os.path.exists(CSV_FILE):
+
+            old_data = pd.read_csv(
+                CSV_FILE
+            )
+
+            final_data = pd.concat(
+                [
+                    old_data,
+                    new_row
+                ],
+                ignore_index=True
+            )
 
         else:
 
-            risk_score = report.get("risk_score", 0)
-            risk_level = report.get("risk_level", "Inconnu")
-            confidence = report.get("confidence", 0)
-
-            # -------------------------------------------------
-            # SCORE
-            # -------------------------------------------------
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric(
-                    "Risk Score",
-                    f"{risk_score}/100"
-                )
-
-            with col2:
-                st.metric(
-                    "Niveau de risque",
-                    risk_level
-                )
-
-            with col3:
-                st.metric(
-                    "Confiance du prototype",
-                    f"{confidence:.1f}%"
-                )
-
-            # -------------------------------------------------
-            # RISK DISPLAY
-            # -------------------------------------------------
-
-            if risk_level == "Élevé":
-
-                st.markdown(
-                    '<div class="risk-high">'
-                    '⚠️ RISQUE ÉLEVÉ'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
-
-            elif risk_level in ["Moyen", "Modéré"]:
-
-                st.markdown(
-                    '<div class="risk-medium">'
-                    '⚠️ RISQUE MOYEN'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
-
-            else:
-
-                st.markdown(
-                    '<div class="risk-low">'
-                    '✓ RISQUE FAIBLE'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
+            final_data = new_row
 
 
-            # -------------------------------------------------
-            # FACTEURS
-            # -------------------------------------------------
-
-            st.subheader("Facteurs analysés")
-
-            factors = report.get("factors", {})
-
-            factor_rows = []
-
-            factor_names = {
-                "temperature": "Température",
-                "storage_duration": "Durée de stockage",
-                "ph": "pH",
-                "cold_chain": "Chaîne du froid",
-                "hygiene": "Hygiène",
-                "pasteurization": "Pasteurisation"
-            }
-
-            for key, label in factor_names.items():
-
-                factor = factors.get(key, {})
-
-                factor_rows.append({
-                    "Facteur": label,
-                    "Score": factor.get("score", 0),
-                    "Niveau": factor.get("level", ""),
-                    "Évaluation": factor.get("reason", "")
-                })
-
-            factor_df = pd.DataFrame(factor_rows)
-
-            st.dataframe(
-                factor_df,
-                use_container_width=True,
-                hide_index=True
-            )
+        final_data.to_csv(
+            CSV_FILE,
+            index=False,
+            encoding="utf-8-sig"
+        )
 
 
-            # -------------------------------------------------
-            # RAISONS
-            # -------------------------------------------------
+        st.success(
+            f"Analyse du lot {batch_id} "
+            "enregistrée avec succès."
+        )
 
-            st.subheader("Raisons identifiées")
+    except Exception as error:
 
-            reasons = report.get("reasons", [])
+        st.warning(
+            "L'analyse a été effectuée, "
+            "mais l'enregistrement dans l'historique "
+            "a rencontré un problème."
+        )
 
-            if reasons:
-
-                for reason in reasons:
-                    st.warning(reason)
-
-            else:
-
-                st.success(
-                    "Aucun facteur de risque détecté par les règles "
-                    "actuelles du prototype."
-                )
+        st.code(
+            str(error)
+        )
 
 
-            # -------------------------------------------------
-            # RECOMMANDATIONS
-            # -------------------------------------------------
-
-            st.subheader("Recommandations")
-
-            recommendations = report.get(
-                "recommendations",
-                []
-            )
-
-            for recommendation in recommendations:
-                st.write("• " + recommendation)
-
-
-            # -------------------------------------------------
-            # INFORMATIONS DU LOT
-            # -------------------------------------------------
-
-            st.subheader("Informations du lot")
-
-            lot_data = pd.DataFrame([{
-                "Lot": batch_id,
-                "Produit": product_name,
-                "Température °C": temperature,
-                "Stockage jours": storage_days,
-                "pH": ph,
-                "Chaîne du froid interrompue": cold_chain_value,
-                "Hygiène maîtrisée": hygiene_value,
-                "Pasteurisé": pasteurized_value
-            }])
-
-            st.dataframe(
-                lot_data,
-                use_container_width=True,
-                hide_index=True
-            )
-
-
-            # -------------------------------------------------
-            # DISCLAIMER
-            # -------------------------------------------------
-
-            st.warning(
-                report.get(
-                    "disclaimer",
-                    "Résultat expérimental d'aide à la décision."
-                )
-            )
-
-
-# =========================================================
-# HISTORIQUE
-# =========================================================
+# =====================================================
+# HISTORY
+# =====================================================
 
 st.divider()
 
-st.subheader("Historique des analyses")
+st.header(
+    "📁 Historique des analyses"
+)
 
-csv_file = "agronexus_assessments.csv"
 
-if os.path.exists(csv_file):
+if os.path.exists(CSV_FILE):
 
     try:
 
         history = pd.read_csv(
-            csv_file,
-            sep=None,
-            engine="python"
+            CSV_FILE
         )
 
-        st.dataframe(
-            history,
-            use_container_width=True,
-            hide_index=True
+
+        if not history.empty:
+
+            st.dataframe(
+                history,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "Aucune analyse enregistrée "
+                "pour le moment."
+            )
+
+
+    except Exception as error:
+
+        st.warning(
+            "Impossible de lire l'historique."
         )
 
-    except Exception as e:
-
-        st.error(
-            f"Impossible de lire l'historique : {e}"
+        st.code(
+            str(error)
         )
 
 else:
 
     st.info(
-        "Aucun historique disponible pour le moment."
+        "Aucune analyse enregistrée "
+        "pour le moment."
     )
 
 
-# =========================================================
+# =====================================================
 # FOOTER
-# =========================================================
+# =====================================================
 
 st.divider()
 
 st.caption(
-    "AgroNexus FoodGuard — Prototype de recherche en sécurité alimentaire. "
-    "Les résultats ne remplacent pas les analyses de laboratoire ni "
-    "la décision du responsable qualité."
+    "AgroNexus FoodGuard est un prototype expérimental "
+    "d'aide à la décision. Il ne remplace pas les analyses "
+    "de laboratoire, les exigences réglementaires ni la "
+    "décision du responsable qualité."
 )
