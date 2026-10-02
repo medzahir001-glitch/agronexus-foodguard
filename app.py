@@ -10,9 +10,10 @@ from foodguard_engine import assess_dairy_food_safety_risk
 # =====================================================
 
 st.set_page_config(
-    page_title="AgroNexus FoodGuard",
+    page_title="FOODNEXA",
     page_icon="🛡️",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
@@ -31,23 +32,95 @@ st.markdown(
     """
     <style>
 
-    .main-title {
-        font-size: 42px;
-        font-weight: 700;
-        margin-bottom: 5px;
+    /* ---------- GENERAL ---------- */
+
+    .main {
+        background-color: #ffffff;
     }
 
-    .subtitle {
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1400px;
+    }
+
+
+    /* ---------- HEADER ---------- */
+
+    .foodnexa-header {
+        text-align: center;
+        padding: 10px 0 5px 0;
+    }
+
+    .foodnexa-tagline {
+        text-align: center;
+        color: #4CAF50;
         font-size: 18px;
-        color: #666666;
+        font-weight: 500;
+        letter-spacing: 1px;
+        margin-top: -5px;
+        margin-bottom: 20px;
+    }
+
+    .foodnexa-divider {
+        height: 3px;
+        width: 100%;
+        background: linear-gradient(
+            90deg,
+            #0B2A4A,
+            #00A6C7,
+            #4CAF50
+        );
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+
+    /* ---------- SECTION TITLES ---------- */
+
+    .section-title {
+        color: #0B2A4A;
+        font-size: 25px;
+        font-weight: 700;
+        margin-top: 20px;
+        margin-bottom: 15px;
+    }
+
+
+    /* ---------- INFO BOX ---------- */
+
+    .info-box {
+        background: linear-gradient(
+            135deg,
+            #F4FAFC,
+            #F8FFF5
+        );
+        border-left: 5px solid #00A6C7;
+        padding: 15px 20px;
+        border-radius: 10px;
         margin-bottom: 25px;
     }
 
-    .section-title {
-        font-size: 25px;
-        font-weight: 650;
-        margin-top: 20px;
-        margin-bottom: 15px;
+
+    /* ---------- RESULT CARDS ---------- */
+
+    .result-box {
+        padding: 20px;
+        border-radius: 15px;
+        background: #F7FAFC;
+        border: 1px solid #E4EAF0;
+        text-align: center;
+    }
+
+
+    /* ---------- FOOTER ---------- */
+
+    .footer {
+        text-align: center;
+        color: #777777;
+        font-size: 13px;
+        padding-top: 15px;
+        padding-bottom: 10px;
     }
 
     </style>
@@ -57,24 +130,46 @@ st.markdown(
 
 
 # =====================================================
-# HEADER
+# FOODNEXA HEADER
 # =====================================================
 
 st.markdown(
-    '<div class="main-title">🛡️ AgroNexus FoodGuard</div>',
+    '<div class="foodnexa-header">',
     unsafe_allow_html=True
 )
 
+st.image(
+    "foodnexa_logo.png",
+    width=700
+)
+
 st.markdown(
-    '<div class="subtitle">'
-    'Prototype intelligent d’évaluation des risques en sécurité alimentaire'
+    '<div class="foodnexa-tagline">'
+    'Intelligent Food Safety Risk Assessment'
     '</div>',
     unsafe_allow_html=True
 )
 
-st.info(
-    "Produit actuellement étudié : Lait pasteurisé | "
-    "Outil expérimental d’aide à la décision."
+st.markdown(
+    '<div class="foodnexa-divider"></div>',
+    unsafe_allow_html=True
+)
+
+
+# =====================================================
+# INTRODUCTION
+# =====================================================
+
+st.markdown(
+    """
+    <div class="info-box">
+        <b>FOODNEXA</b> is an experimental intelligent
+        decision-support prototype for food safety risk assessment.
+        <br><br>
+        <b>Current research case:</b> Pasteurized milk
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 
@@ -82,7 +177,11 @@ st.info(
 # NEW ANALYSIS
 # =====================================================
 
-st.header("🔬 Nouvelle analyse")
+st.markdown(
+    '<div class="section-title">🔬 Nouvelle analyse</div>',
+    unsafe_allow_html=True
+)
+
 
 col1, col2 = st.columns(2)
 
@@ -95,7 +194,7 @@ with col1:
 
     batch_id = st.text_input(
         "Numéro de lot",
-        placeholder="Exemple : LOT-004"
+        placeholder="Exemple : LOT-006"
     )
 
     product_name = st.text_input(
@@ -161,6 +260,10 @@ start_analysis = st.button(
 )
 
 
+# =====================================================
+# RUN ANALYSIS
+# =====================================================
+
 if start_analysis:
 
     # -------------------------------------------------
@@ -205,7 +308,7 @@ if start_analysis:
 
 
     # -------------------------------------------------
-    # SUCCESS
+    # SUCCESS MESSAGE
     # -------------------------------------------------
 
     st.success(
@@ -217,7 +320,10 @@ if start_analysis:
     # RESULT
     # =================================================
 
-    st.header("📊 Résultat de l'analyse")
+    st.markdown(
+        '<div class="section-title">📊 Résultat de l’analyse</div>',
+        unsafe_allow_html=True
+    )
 
 
     result_col1, result_col2, result_col3 = st.columns(3)
@@ -274,23 +380,30 @@ if start_analysis:
     # FACTORS
     # =================================================
 
-    st.subheader("🔎 Facteurs analysés")
+    st.subheader(
+        "🔎 Facteurs analysés"
+    )
 
 
     factor_names = {
 
-        "temperature": "Température",
+        "temperature":
+            "Température",
 
-        "storage_duration": "Durée de stockage",
+        "storage_duration":
+            "Durée de stockage",
 
-        "ph": "pH",
+        "ph":
+            "pH",
 
-        "cold_chain": "Chaîne du froid",
+        "cold_chain":
+            "Chaîne du froid",
 
-        "hygiene": "Hygiène",
+        "hygiene":
+            "Hygiène",
 
-        "pasteurization": "Pasteurisation"
-
+        "pasteurization":
+            "Pasteurisation"
     }
 
 
@@ -301,16 +414,20 @@ if start_analysis:
 
         factor_data.append(
             {
-                "Facteur": factor_names.get(
-                    factor_name,
-                    factor_name
-                ),
+                "Facteur":
+                    factor_names.get(
+                        factor_name,
+                        factor_name
+                    ),
 
-                "Score": factor["score"],
+                "Score":
+                    factor["score"],
 
-                "Niveau": factor["level"],
+                "Niveau":
+                    factor["level"],
 
-                "Explication": factor["reason"]
+                "Explication":
+                    factor["reason"]
             }
         )
 
@@ -436,8 +553,9 @@ if start_analysis:
             else "Aucun facteur de risque détecté",
 
         "recommendations":
-            " | ".join(report["recommendations"])
-
+            " | ".join(
+                report["recommendations"]
+            )
     }
 
 
@@ -483,6 +601,7 @@ if start_analysis:
             "enregistrée avec succès."
         )
 
+
     except Exception as error:
 
         st.warning(
@@ -502,8 +621,9 @@ if start_analysis:
 
 st.divider()
 
-st.header(
-    "📁 Historique des analyses"
+st.markdown(
+    '<div class="section-title">📁 Historique des analyses</div>',
+    unsafe_allow_html=True
 )
 
 
@@ -542,6 +662,7 @@ if os.path.exists(CSV_FILE):
             str(error)
         )
 
+
 else:
 
     st.info(
@@ -556,9 +677,20 @@ else:
 
 st.divider()
 
-st.caption(
-    "AgroNexus FoodGuard est un prototype expérimental "
-    "d'aide à la décision. Il ne remplace pas les analyses "
-    "de laboratoire, les exigences réglementaires ni la "
-    "décision du responsable qualité."
+st.markdown(
+    """
+    <div class="footer">
+
+    <b>FOODNEXA</b> — Food Safety / Risk Intelligence
+
+    <br><br>
+
+    Prototype expérimental d’aide à la décision.
+    Il ne remplace pas les analyses de laboratoire,
+    les exigences réglementaires ni la décision
+    du responsable qualité.
+
+    </div>
+    """,
+    unsafe_allow_html=True
 )
