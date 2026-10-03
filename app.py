@@ -22,6 +22,7 @@ st.set_page_config(
 # =====================================================
 
 CSV_FILE = "agronexus_assessments.csv"
+LOGO_FILE = "foodnexa_logo.png"
 
 
 # =====================================================
@@ -32,51 +33,57 @@ st.markdown(
     """
     <style>
 
-    /* ---------- GENERAL ---------- */
+    /* ==============================
+       GENERAL
+    ============================== */
 
     .main {
         background-color: #ffffff;
     }
 
     .block-container {
-        padding-top: 2rem;
+        padding-top: 1.5rem;
         padding-bottom: 3rem;
         max-width: 1400px;
     }
 
 
-    /* ---------- HEADER ---------- */
+    /* ==============================
+       HEADER
+    ============================== */
 
     .foodnexa-header {
         text-align: center;
-        padding: 10px 0 5px 0;
+        padding: 10px 0 0 0;
     }
 
     .foodnexa-tagline {
         text-align: center;
-        color: #4CAF50;
+        color: #238B57;
         font-size: 18px;
-        font-weight: 500;
+        font-weight: 600;
         letter-spacing: 1px;
-        margin-top: -5px;
+        margin-top: 8px;
         margin-bottom: 20px;
     }
 
     .foodnexa-divider {
-        height: 3px;
+        height: 4px;
         width: 100%;
         background: linear-gradient(
             90deg,
             #0B2A4A,
             #00A6C7,
-            #4CAF50
+            #238B57
         );
         border-radius: 10px;
         margin-bottom: 30px;
     }
 
 
-    /* ---------- SECTION TITLES ---------- */
+    /* ==============================
+       SECTION TITLES
+    ============================== */
 
     .section-title {
         color: #0B2A4A;
@@ -87,40 +94,64 @@ st.markdown(
     }
 
 
-    /* ---------- INFO BOX ---------- */
+    /* ==============================
+       INFORMATION BOX
+    ============================== */
 
     .info-box {
         background: linear-gradient(
             135deg,
-            #F4FAFC,
-            #F8FFF5
+            #F3F9FC,
+            #F5FBF6
         );
+
         border-left: 5px solid #00A6C7;
-        padding: 15px 20px;
+
+        padding: 18px 22px;
+
         border-radius: 10px;
+
         margin-bottom: 25px;
+
+        font-size: 15px;
+
+        line-height: 1.6;
     }
 
 
-    /* ---------- RESULT CARDS ---------- */
+    /* ==============================
+       ANALYSIS CARD
+    ============================== */
 
-    .result-box {
+    .analysis-card {
+        background-color: #F8FAFC;
+
+        border: 1px solid #E2E8F0;
+
+        border-radius: 14px;
+
         padding: 20px;
-        border-radius: 15px;
-        background: #F7FAFC;
-        border: 1px solid #E4EAF0;
-        text-align: center;
+
+        margin-bottom: 20px;
     }
 
 
-    /* ---------- FOOTER ---------- */
+    /* ==============================
+       FOOTER
+    ============================== */
 
     .footer {
         text-align: center;
+
         color: #777777;
+
         font-size: 13px;
+
         padding-top: 15px;
+
         padding-bottom: 10px;
+
+        line-height: 1.6;
     }
 
     </style>
@@ -138,17 +169,52 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.image(
-    "foodnexa_logo.png",
-    width=700
-)
+
+# -----------------------------------------------------
+# LOGO
+# -----------------------------------------------------
+
+if os.path.exists(LOGO_FILE):
+
+    st.image(
+        LOGO_FILE,
+        width=700
+    )
+
+else:
+
+    st.markdown(
+        """
+        <h1 style="
+            text-align:center;
+            color:#0B2A4A;
+            font-size:48px;
+            margin-bottom:5px;
+        ">
+            🛡️ FOODNEXA
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# -----------------------------------------------------
+# TAGLINE
+# -----------------------------------------------------
 
 st.markdown(
-    '<div class="foodnexa-tagline">'
-    'Intelligent Food Safety Risk Assessment'
-    '</div>',
+    """
+    <div class="foodnexa-tagline">
+        INTELLIGENT FOOD SAFETY RISK ASSESSMENT
+    </div>
+    """,
     unsafe_allow_html=True
 )
+
+
+# -----------------------------------------------------
+# DIVIDER
+# -----------------------------------------------------
 
 st.markdown(
     '<div class="foodnexa-divider"></div>',
@@ -163,10 +229,23 @@ st.markdown(
 st.markdown(
     """
     <div class="info-box">
-        <b>FOODNEXA</b> is an experimental intelligent
-        decision-support prototype for food safety risk assessment.
+
+        <b style="font-size:18px;">FOODNEXA</b>
+        is an experimental intelligent decision-support
+        prototype designed for food safety risk assessment.
+
         <br><br>
-        <b>Current research case:</b> Pasteurized milk
+
+        <b>Current research case:</b>
+        Pasteurized milk
+
+        <br>
+
+        <b>Objective:</b>
+        Early identification of potential food safety risk
+        factors using structured input data and an
+        explainable rule-based assessment engine.
+
     </div>
     """,
     unsafe_allow_html=True
@@ -182,6 +261,18 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
+st.markdown(
+    """
+    <div class="analysis-card">
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =====================================================
+# INPUT COLUMNS
+# =====================================================
 
 col1, col2 = st.columns(2)
 
@@ -238,7 +329,7 @@ with col2:
     )
 
     hygiene_controlled = st.checkbox(
-        "Conditions d’hygiène maîtrisées",
+        "Conditions d'hygiène maîtrisées",
         value=True
     )
 
@@ -248,14 +339,21 @@ with col2:
     )
 
 
+st.markdown(
+    "</div>",
+    unsafe_allow_html=True
+)
+
+
 # =====================================================
 # ANALYSIS BUTTON
 # =====================================================
 
 st.divider()
 
+
 start_analysis = st.button(
-    "🚀 Lancer l'analyse",
+    "🚀 Lancer l'analyse FOODNEXA",
     use_container_width=True
 )
 
@@ -279,6 +377,15 @@ if start_analysis:
         st.stop()
 
 
+    if not product_name.strip():
+
+        st.warning(
+            "Veuillez saisir le nom du produit."
+        )
+
+        st.stop()
+
+
     # -------------------------------------------------
     # RUN ENGINE
     # -------------------------------------------------
@@ -286,15 +393,24 @@ if start_analysis:
     try:
 
         report = assess_dairy_food_safety_risk(
+
             temperature=temperature,
+
             storage_days=storage_days,
+
             ph=ph,
+
             cold_chain_broken=cold_chain_broken,
+
             hygiene_controlled=hygiene_controlled,
+
             pasteurized=pasteurized,
+
             batch_id=batch_id,
+
             product_name=product_name
         )
+
 
     except Exception as error:
 
@@ -302,17 +418,19 @@ if start_analysis:
             "Une erreur est survenue pendant l'analyse."
         )
 
-        st.code(str(error))
+        st.code(
+            str(error)
+        )
 
         st.stop()
 
 
     # -------------------------------------------------
-    # SUCCESS MESSAGE
+    # SUCCESS
     # -------------------------------------------------
 
     st.success(
-        "Analyse terminée avec succès."
+        "Analyse FOODNEXA terminée avec succès."
     )
 
 
@@ -332,7 +450,7 @@ if start_analysis:
     with result_col1:
 
         st.metric(
-            "Risk Score",
+            "RISK SCORE",
             f"{report['risk_score']}/100"
         )
 
@@ -340,7 +458,7 @@ if start_analysis:
     with result_col2:
 
         st.metric(
-            "Niveau de risque",
+            "NIVEAU DE RISQUE",
             report["risk_level"]
         )
 
@@ -348,14 +466,14 @@ if start_analysis:
     with result_col3:
 
         st.metric(
-            "Confidence",
+            "CONFIDENCE",
             f"{report['confidence']:.1f}%"
         )
 
 
-    # -------------------------------------------------
+    # =================================================
     # RISK STATUS
-    # -------------------------------------------------
+    # =================================================
 
     if report["risk_level"] == "Élevé":
 
@@ -413,6 +531,7 @@ if start_analysis:
     for factor_name, factor in report["factors"].items():
 
         factor_data.append(
+
             {
                 "Facteur":
                     factor_names.get(
@@ -429,6 +548,7 @@ if start_analysis:
                 "Explication":
                     factor["reason"]
             }
+
         )
 
 
@@ -475,7 +595,7 @@ if start_analysis:
     # =================================================
 
     st.subheader(
-        "💡 Recommandations"
+        "💡 Recommandations FOODNEXA"
     )
 
 
@@ -548,9 +668,12 @@ if start_analysis:
             report["confidence"],
 
         "reasons":
-            " | ".join(report["reasons"])
+            " | ".join(
+                report["reasons"]
+            )
             if report["reasons"]
-            else "Aucun facteur de risque détecté",
+            else
+            "Aucun facteur de risque détecté",
 
         "recommendations":
             " | ".join(
@@ -564,9 +687,9 @@ if start_analysis:
     )
 
 
-    # -------------------------------------------------
+    # =================================================
     # UPDATE CSV
-    # -------------------------------------------------
+    # =================================================
 
     try:
 
@@ -598,7 +721,7 @@ if start_analysis:
 
         st.success(
             f"Analyse du lot {batch_id} "
-            "enregistrée avec succès."
+            "enregistrée dans l'historique."
         )
 
 
@@ -620,6 +743,7 @@ if start_analysis:
 # =====================================================
 
 st.divider()
+
 
 st.markdown(
     '<div class="section-title">📁 Historique des analyses</div>',
@@ -662,7 +786,6 @@ if os.path.exists(CSV_FILE):
             str(error)
         )
 
-
 else:
 
     st.info(
@@ -677,18 +800,24 @@ else:
 
 st.divider()
 
+
 st.markdown(
     """
     <div class="footer">
 
-    <b>FOODNEXA</b> — Food Safety / Risk Intelligence
+        <b>FOODNEXA</b>
+        — Food Safety / Risk Intelligence
 
-    <br><br>
+        <br><br>
 
-    Prototype expérimental d’aide à la décision.
-    Il ne remplace pas les analyses de laboratoire,
-    les exigences réglementaires ni la décision
-    du responsable qualité.
+        Intelligent Food Safety Risk Assessment
+
+        <br><br>
+
+        Prototype expérimental d’aide à la décision.
+        Il ne remplace pas les analyses de laboratoire,
+        les exigences réglementaires ni la décision
+        du responsable qualité.
 
     </div>
     """,
