@@ -26,16 +26,12 @@ LOGO_FILE = "foodnexa_logo.png"
 
 
 # =====================================================
-# CUSTOM STYLE
+# CUSTOM CSS
 # =====================================================
 
 st.markdown(
     """
     <style>
-
-    /* ==============================
-       GENERAL
-    ============================== */
 
     .main {
         background-color: #ffffff;
@@ -46,11 +42,6 @@ st.markdown(
         padding-bottom: 3rem;
         max-width: 1400px;
     }
-
-
-    /* ==============================
-       HEADER
-    ============================== */
 
     .foodnexa-header {
         text-align: center;
@@ -80,11 +71,6 @@ st.markdown(
         margin-bottom: 30px;
     }
 
-
-    /* ==============================
-       SECTION TITLES
-    ============================== */
-
     .section-title {
         color: #0B2A4A;
         font-size: 25px;
@@ -93,64 +79,34 @@ st.markdown(
         margin-bottom: 15px;
     }
 
-
-    /* ==============================
-       INFORMATION BOX
-    ============================== */
-
     .info-box {
         background: linear-gradient(
             135deg,
             #F3F9FC,
             #F5FBF6
         );
-
         border-left: 5px solid #00A6C7;
-
         padding: 18px 22px;
-
         border-radius: 10px;
-
         margin-bottom: 25px;
-
         font-size: 15px;
-
         line-height: 1.6;
     }
 
-
-    /* ==============================
-       ANALYSIS CARD
-    ============================== */
-
     .analysis-card {
         background-color: #F8FAFC;
-
         border: 1px solid #E2E8F0;
-
         border-radius: 14px;
-
         padding: 20px;
-
         margin-bottom: 20px;
     }
 
-
-    /* ==============================
-       FOOTER
-    ============================== */
-
     .footer {
         text-align: center;
-
         color: #777777;
-
         font-size: 13px;
-
         padding-top: 15px;
-
         padding-bottom: 10px;
-
         line-height: 1.6;
     }
 
@@ -161,18 +117,13 @@ st.markdown(
 
 
 # =====================================================
-# FOODNEXA HEADER
+# HEADER
 # =====================================================
 
 st.markdown(
     '<div class="foodnexa-header">',
     unsafe_allow_html=True
 )
-
-
-# -----------------------------------------------------
-# LOGO
-# -----------------------------------------------------
 
 if os.path.exists(LOGO_FILE):
 
@@ -198,10 +149,6 @@ else:
     )
 
 
-# -----------------------------------------------------
-# TAGLINE
-# -----------------------------------------------------
-
 st.markdown(
     """
     <div class="foodnexa-tagline">
@@ -210,11 +157,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-
-# -----------------------------------------------------
-# DIVIDER
-# -----------------------------------------------------
 
 st.markdown(
     '<div class="foodnexa-divider"></div>',
@@ -263,16 +205,10 @@ st.markdown(
 
 
 st.markdown(
-    """
-    <div class="analysis-card">
-    """,
+    '<div class="analysis-card">',
     unsafe_allow_html=True
 )
 
-
-# =====================================================
-# INPUT COLUMNS
-# =====================================================
 
 col1, col2 = st.columns(2)
 
@@ -351,7 +287,6 @@ st.markdown(
 
 st.divider()
 
-
 start_analysis = st.button(
     "🚀 Lancer l'analyse FOODNEXA",
     use_container_width=True
@@ -363,10 +298,6 @@ start_analysis = st.button(
 # =====================================================
 
 if start_analysis:
-
-    # -------------------------------------------------
-    # VALIDATION
-    # -------------------------------------------------
 
     if not batch_id.strip():
 
@@ -386,31 +317,22 @@ if start_analysis:
         st.stop()
 
 
-    # -------------------------------------------------
-    # RUN ENGINE
-    # -------------------------------------------------
+    # =================================================
+    # ENGINE
+    # =================================================
 
     try:
 
         report = assess_dairy_food_safety_risk(
-
             temperature=temperature,
-
             storage_days=storage_days,
-
             ph=ph,
-
             cold_chain_broken=cold_chain_broken,
-
             hygiene_controlled=hygiene_controlled,
-
             pasteurized=pasteurized,
-
             batch_id=batch_id,
-
             product_name=product_name
         )
-
 
     except Exception as error:
 
@@ -425,17 +347,13 @@ if start_analysis:
         st.stop()
 
 
-    # -------------------------------------------------
-    # SUCCESS
-    # -------------------------------------------------
-
     st.success(
         "Analyse FOODNEXA terminée avec succès."
     )
 
 
     # =================================================
-    # RESULT
+    # RESULTS
     # =================================================
 
     st.markdown(
@@ -504,24 +422,12 @@ if start_analysis:
 
 
     factor_names = {
-
-        "temperature":
-            "Température",
-
-        "storage_duration":
-            "Durée de stockage",
-
-        "ph":
-            "pH",
-
-        "cold_chain":
-            "Chaîne du froid",
-
-        "hygiene":
-            "Hygiène",
-
-        "pasteurization":
-            "Pasteurisation"
+        "temperature": "Température",
+        "storage_duration": "Durée de stockage",
+        "ph": "pH",
+        "cold_chain": "Chaîne du froid",
+        "hygiene": "Hygiène",
+        "pasteurization": "Pasteurisation"
     }
 
 
@@ -531,7 +437,6 @@ if start_analysis:
     for factor_name, factor in report["factors"].items():
 
         factor_data.append(
-
             {
                 "Facteur":
                     factor_names.get(
@@ -548,7 +453,6 @@ if start_analysis:
                 "Explication":
                     factor["reason"]
             }
-
         )
 
 
@@ -672,8 +576,7 @@ if start_analysis:
                 report["reasons"]
             )
             if report["reasons"]
-            else
-            "Aucun facteur de risque détecté",
+            else "Aucun facteur de risque détecté",
 
         "recommendations":
             " | ".join(
@@ -688,7 +591,7 @@ if start_analysis:
 
 
     # =================================================
-    # UPDATE CSV
+    # SAVE CSV
     # =================================================
 
     try:
@@ -744,7 +647,6 @@ if start_analysis:
 
 st.divider()
 
-
 st.markdown(
     '<div class="section-title">📁 Historique des analyses</div>',
     unsafe_allow_html=True
@@ -799,7 +701,6 @@ else:
 # =====================================================
 
 st.divider()
-
 
 st.markdown(
     """
