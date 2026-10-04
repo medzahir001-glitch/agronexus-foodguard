@@ -1,0 +1,1 @@
+batch_id,product_name,temperature_celsius,storage_days,ph,cold_chain_broken,hygiene_controlled,pasteurized,total_viable_count,enterobacteriaceae_count,coliform_count,staphylococcus_aureus_count,salmonella_detected,sensory_status,nonconformity_detected,expert_risk_label
