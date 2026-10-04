@@ -33,85 +33,54 @@ st.markdown(
     """
     <style>
 
-    .main {
-        background-color: #ffffff;
-    }
-
     .block-container {
         max-width: 1400px;
         padding-top: 1.5rem;
         padding-bottom: 3rem;
     }
 
-    .foodnexa-header {
-        text-align: center;
-        padding-top: 10px;
-    }
-
     .foodnexa-tagline {
         text-align: center;
-        color: #238B57;
-        font-size: 18px;
-        font-weight: 600;
+        color: #20A36A;
+        font-size: 17px;
+        font-weight: 700;
         letter-spacing: 1px;
         margin-top: 8px;
         margin-bottom: 20px;
     }
 
-    .foodnexa-divider {
+    .foodnexa-line {
         height: 4px;
         width: 100%;
         background: linear-gradient(
             90deg,
             #0B2A4A,
             #00A6C7,
-            #238B57
+            #20A36A
         );
         border-radius: 10px;
-        margin-bottom: 30px;
+        margin-bottom: 28px;
     }
 
     .section-title {
         color: #0B2A4A;
         font-size: 25px;
         font-weight: 700;
-        margin-top: 20px;
+        margin-top: 18px;
         margin-bottom: 15px;
     }
 
-    .info-box {
-        background: linear-gradient(
-            135deg,
-            #F3F9FC,
-            #F5FBF6
-        );
-
-        border-left: 5px solid #00A6C7;
-
-        padding: 18px 22px;
-
-        border-radius: 10px;
-
-        margin-bottom: 25px;
-
-        line-height: 1.6;
+    .small-label {
+        color: #64748B;
+        font-size: 14px;
     }
 
-    .analysis-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-
-    .footer {
+    .footer-text {
         text-align: center;
-        color: #777777;
+        color: #64748B;
         font-size: 13px;
-        padding-top: 15px;
-        padding-bottom: 10px;
-        line-height: 1.6;
+        line-height: 1.7;
+        padding: 15px;
     }
 
     </style>
@@ -121,14 +90,47 @@ st.markdown(
 
 
 # =====================================================
-# HEADER
+# SIDEBAR
 # =====================================================
 
-st.markdown(
-    '<div class="foodnexa-header">',
-    unsafe_allow_html=True
-)
+with st.sidebar:
 
+    st.markdown("## 🛡️ FOODNEXA")
+
+    st.markdown(
+        "**Food Safety / Risk Intelligence**"
+    )
+
+    st.divider()
+
+    st.markdown("### 🔬 Research Prototype")
+
+    st.write(
+        "Current research case:"
+    )
+
+    st.info(
+        "🥛 Lait pasteurisé"
+    )
+
+    st.markdown("### 📌 Fonction")
+
+    st.write(
+        "Évaluation expérimentale des facteurs "
+        "pouvant contribuer au risque en sécurité "
+        "alimentaire."
+    )
+
+    st.divider()
+
+    st.caption(
+        "FOODNEXA v1.0 — Experimental Prototype"
+    )
+
+
+# =====================================================
+# HEADER
+# =====================================================
 
 if os.path.exists(LOGO_FILE):
 
@@ -140,16 +142,7 @@ if os.path.exists(LOGO_FILE):
 else:
 
     st.markdown(
-        """
-        <h1 style="
-            text-align:center;
-            color:#0B2A4A;
-            font-size:48px;
-        ">
-            🛡️ FOODNEXA
-        </h1>
-        """,
-        unsafe_allow_html=True
+        "# 🛡️ FOODNEXA"
     )
 
 
@@ -164,7 +157,7 @@ st.markdown(
 
 
 st.markdown(
-    '<div class="foodnexa-divider"></div>',
+    '<div class="foodnexa-line"></div>',
     unsafe_allow_html=True
 )
 
@@ -174,28 +167,20 @@ st.markdown(
 # =====================================================
 
 st.markdown(
+    "### 🛡️ À propos de FOODNEXA"
+)
+
+st.info(
     """
-    <div class="info-box">
+    **FOODNEXA** est un prototype expérimental
+    d'aide intelligente à la décision en sécurité alimentaire.
 
-        <b style="font-size:18px;">FOODNEXA</b>
-        is an experimental intelligent decision-support
-        prototype for food safety risk assessment.
+    **Cas de recherche actuel :** Lait pasteurisé.
 
-        <br><br>
-
-        <b>Current research case:</b>
-        Pasteurized milk
-
-        <br>
-
-        <b>Objective:</b>
-        Early identification of potential food safety
-        risk factors using structured data and an
-        explainable rule-based assessment engine.
-
-    </div>
-    """,
-    unsafe_allow_html=True
+    **Objectif :** identifier rapidement des facteurs
+    pouvant contribuer au risque à partir de données
+    structurées et fournir une analyse explicable.
+    """
 )
 
 
@@ -204,14 +189,7 @@ st.markdown(
 # =====================================================
 
 st.markdown(
-    '<div class="section-title">🔬 Nouvelle analyse</div>',
-    unsafe_allow_html=True
-)
-
-
-st.markdown(
-    '<div class="analysis-card">',
-    unsafe_allow_html=True
+    "### 🔬 Nouvelle analyse"
 )
 
 
@@ -224,6 +202,8 @@ col1, col2 = st.columns(2)
 
 with col1:
 
+    st.markdown("#### 📦 Identification")
+
     batch_id = st.text_input(
         "Numéro de lot",
         placeholder="Exemple : LOT-006"
@@ -233,6 +213,8 @@ with col1:
         "Nom du produit",
         value="Lait pasteurisé"
     )
+
+    st.markdown("#### 🌡️ Conditions de stockage")
 
     temperature = st.number_input(
         "Température de stockage (°C)",
@@ -257,6 +239,8 @@ with col1:
 
 with col2:
 
+    st.markdown("#### 🧪 Paramètres qualité")
+
     ph = st.number_input(
         "Valeur pH",
         min_value=0.0,
@@ -264,6 +248,8 @@ with col2:
         value=6.6,
         step=0.1
     )
+
+    st.markdown("#### 🧼 Contrôles")
 
     cold_chain_broken = st.checkbox(
         "Interruption de la chaîne du froid"
@@ -280,12 +266,6 @@ with col2:
     )
 
 
-st.markdown(
-    '</div>',
-    unsafe_allow_html=True
-)
-
-
 # =====================================================
 # ANALYSIS BUTTON
 # =====================================================
@@ -295,7 +275,8 @@ st.divider()
 
 start_analysis = st.button(
     "🚀 LANCER L'ANALYSE FOODNEXA",
-    use_container_width=True
+    use_container_width=True,
+    type="primary"
 )
 
 
@@ -312,7 +293,7 @@ if start_analysis:
     if not batch_id.strip():
 
         st.warning(
-            "Veuillez saisir un numéro de lot."
+            "⚠️ Veuillez saisir un numéro de lot."
         )
 
         st.stop()
@@ -321,7 +302,7 @@ if start_analysis:
     if not product_name.strip():
 
         st.warning(
-            "Veuillez saisir le nom du produit."
+            "⚠️ Veuillez saisir le nom du produit."
         )
 
         st.stop()
@@ -356,7 +337,7 @@ if start_analysis:
     except Exception as error:
 
         st.error(
-            "Une erreur est survenue pendant l'analyse."
+            "❌ Une erreur est survenue pendant l'analyse."
         )
 
         st.code(
@@ -371,7 +352,7 @@ if start_analysis:
     # =================================================
 
     st.success(
-        "Analyse FOODNEXA terminée avec succès."
+        "✅ Analyse FOODNEXA terminée avec succès."
     )
 
 
@@ -380,8 +361,7 @@ if start_analysis:
     # =================================================
 
     st.markdown(
-        '<div class="section-title">📊 Résultat de l’analyse</div>',
-        unsafe_allow_html=True
+        "### 📊 Résultat de l'analyse"
     )
 
 
@@ -439,8 +419,8 @@ if start_analysis:
     # FACTORS
     # =================================================
 
-    st.subheader(
-        "🔎 Facteurs analysés"
+    st.markdown(
+        "### 🔎 Facteurs analysés"
     )
 
 
@@ -508,8 +488,8 @@ if start_analysis:
     # RISK FACTORS
     # =================================================
 
-    st.subheader(
-        "⚠️ Facteurs de risque détectés"
+    st.markdown(
+        "### ⚠️ Facteurs de risque détectés"
     )
 
 
@@ -517,14 +497,13 @@ if start_analysis:
 
         for reason in report["reasons"]:
 
-            st.write(
-                "•",
+            st.warning(
                 reason
             )
 
     else:
 
-        st.write(
+        st.success(
             "Aucun facteur de risque détecté "
             "selon les règles actuelles du prototype."
         )
@@ -534,21 +513,78 @@ if start_analysis:
     # RECOMMENDATIONS
     # =================================================
 
-    st.subheader(
-        "💡 Recommandations FOODNEXA"
+    st.markdown(
+        "### 💡 Recommandations FOODNEXA"
     )
 
 
     for recommendation in report["recommendations"]:
 
-        st.write(
-            "•",
+        st.info(
             recommendation
         )
 
 
     # =================================================
-    # SAVE DATA
+    # ANALYSIS SUMMARY
+    # =================================================
+
+    st.markdown(
+        "### 📋 Résumé de l'analyse"
+    )
+
+
+    summary_col1, summary_col2 = st.columns(2)
+
+
+    with summary_col1:
+
+        st.write(
+            "**Lot :**",
+            report["batch_id"]
+        )
+
+        st.write(
+            "**Produit :**",
+            report["product_name"]
+        )
+
+        st.write(
+            "**Température :**",
+            f"{temperature} °C"
+        )
+
+        st.write(
+            "**Durée :**",
+            f"{storage_days} jours"
+        )
+
+
+    with summary_col2:
+
+        st.write(
+            "**pH :**",
+            ph
+        )
+
+        st.write(
+            "**Chaîne du froid interrompue :**",
+            "Oui" if cold_chain_broken else "Non"
+        )
+
+        st.write(
+            "**Hygiène maîtrisée :**",
+            "Oui" if hygiene_controlled else "Non"
+        )
+
+        st.write(
+            "**Pasteurisé :**",
+            "Oui" if pasteurized else "Non"
+        )
+
+
+    # =================================================
+    # SAVE RESULT
     # =================================================
 
     row = {
@@ -659,7 +695,7 @@ if start_analysis:
 
 
         st.success(
-            f"Analyse du lot {batch_id} "
+            f"💾 Analyse du lot {batch_id} "
             "enregistrée dans l'historique."
         )
 
@@ -685,8 +721,7 @@ st.divider()
 
 
 st.markdown(
-    '<div class="section-title">📁 Historique des analyses</div>',
-    unsafe_allow_html=True
+    "### 📁 Historique des analyses"
 )
 
 
@@ -710,8 +745,7 @@ if os.path.exists(CSV_FILE):
         else:
 
             st.info(
-                "Aucune analyse enregistrée "
-                "pour le moment."
+                "Aucune analyse enregistrée pour le moment."
             )
 
 
@@ -728,8 +762,7 @@ if os.path.exists(CSV_FILE):
 else:
 
     st.info(
-        "Aucune analyse enregistrée "
-        "pour le moment."
+        "Aucune analyse enregistrée pour le moment."
     )
 
 
@@ -742,21 +775,20 @@ st.divider()
 
 st.markdown(
     """
-    <div class="footer">
+    <div class="footer-text">
 
-        <b>FOODNEXA</b>
-        — FOOD SAFETY / RISK INTELLIGENCE
+    <b>FOODNEXA</b> — FOOD SAFETY / RISK INTELLIGENCE
 
-        <br><br>
+    <br>
 
-        Intelligent Food Safety Risk Assessment
+    Intelligent Food Safety Risk Assessment
 
-        <br><br>
+    <br><br>
 
-        Prototype expérimental d’aide à la décision.
-        Il ne remplace pas les analyses de laboratoire,
-        les exigences réglementaires ni la décision
-        du responsable qualité.
+    Prototype expérimental d’aide à la décision.
+    Il ne remplace pas les analyses de laboratoire,
+    les exigences réglementaires ni la décision
+    du responsable qualité.
 
     </div>
     """,
