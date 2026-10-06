@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 
-
 from foodguard_engine import assess_dairy_food_safety_risk
+from foodnexa_data_quality import generate_quality_report
 
 
 # =====================================================
@@ -23,9 +23,7 @@ st.set_page_config(
 # =====================================================
 
 CSV_FILE = "agronexus_assessments.csv"
-
 RESEARCH_CSV_FILE = "foodnexa_research_dataset.csv"
-
 LOGO_FILE = "foodnexa_logo.png"
 
 
@@ -111,17 +109,12 @@ st.markdown(
 if os.path.exists(CSV_FILE):
 
     try:
-
-        history = pd.read_csv(
-            CSV_FILE
-        )
+        history = pd.read_csv(CSV_FILE)
 
     except Exception:
-
         history = pd.DataFrame()
 
 else:
-
     history = pd.DataFrame()
 
 
@@ -132,14 +125,14 @@ else:
 if os.path.exists(RESEARCH_CSV_FILE):
 
     try:
-
         research_data = pd.read_csv(
             RESEARCH_CSV_FILE
         )
 
     except Exception:
-
-        research_data = pd.DataFrame()
+        research_data = pd.DataFrame(
+            columns=RESEARCH_COLUMNS
+        )
 
 else:
 
@@ -236,7 +229,6 @@ if page == "📊 Dashboard":
         "de risque en sécurité alimentaire."
     )
 
-
     if history.empty:
 
         st.info(
@@ -253,7 +245,6 @@ if page == "📊 Dashboard":
                 errors="coerce"
             )
 
-
         if "confidence" in history.columns:
 
             history["confidence"] = pd.to_numeric(
@@ -261,9 +252,7 @@ if page == "📊 Dashboard":
                 errors="coerce"
             )
 
-
         total_analyses = len(history)
-
 
         high_risk = len(
             history[
@@ -271,13 +260,11 @@ if page == "📊 Dashboard":
             ]
         )
 
-
         moderate_risk = len(
             history[
                 history["risk_level"] == "Modéré"
             ]
         )
-
 
         low_risk = len(
             history[
@@ -285,81 +272,61 @@ if page == "📊 Dashboard":
             ]
         )
 
-
         average_score = history[
             "risk_score"
         ].mean()
-
 
         average_confidence = history[
             "confidence"
         ].mean()
 
-
         c1, c2, c3, c4 = st.columns(4)
 
-
         with c1:
-
             st.metric(
                 "📊 Analyses",
                 total_analyses
             )
 
-
         with c2:
-
             st.metric(
                 "🔴 Risque élevé",
                 high_risk
             )
 
-
         with c3:
-
             st.metric(
                 "🟠 Risque modéré",
                 moderate_risk
             )
 
-
         with c4:
-
             st.metric(
                 "🟢 Risque faible",
                 low_risk
             )
 
-
         st.divider()
-
 
         c5, c6 = st.columns(2)
 
-
         with c5:
-
             st.metric(
                 "📈 Risk Score moyen",
                 f"{average_score:.1f}/100"
             )
 
-
         with c6:
-
             st.metric(
                 "🎯 Confidence moyenne",
                 f"{average_confidence:.1f}%"
             )
 
-
         st.divider()
-
 
         st.subheader(
             "📊 Distribution des niveaux de risque"
         )
-
 
         distribution = pd.DataFrame(
             {
@@ -368,7 +335,6 @@ if page == "📊 Dashboard":
                     "Modéré",
                     "Élevé"
                 ],
-
                 "Nombre": [
                     low_risk,
                     moderate_risk,
@@ -377,13 +343,11 @@ if page == "📊 Dashboard":
             }
         )
 
-
         st.bar_chart(
             distribution.set_index(
                 "Niveau"
             )
         )
-
 
         if len(history) > 1:
 
@@ -391,11 +355,9 @@ if page == "📊 Dashboard":
                 "📈 Évolution des Risk Scores"
             )
 
-
             score_history = history[
                 ["batch_id", "risk_score"]
             ].dropna()
-
 
             if not score_history.empty:
 
@@ -403,16 +365,13 @@ if page == "📊 Dashboard":
                     "batch_id"
                 )
 
-
                 st.line_chart(
                     score_history
                 )
 
-
         st.subheader(
             "🕒 Dernières analyses"
         )
-
 
         recent_columns = [
             "analysis_date",
@@ -423,18 +382,15 @@ if page == "📊 Dashboard":
             "confidence"
         ]
 
-
         available_columns = [
             column
             for column in recent_columns
             if column in history.columns
         ]
 
-
         recent = history[
             available_columns
         ].tail(10).iloc[::-1]
-
 
         st.dataframe(
             recent,
@@ -458,9 +414,7 @@ elif page == "🔬 Nouvelle analyse":
         "pour un lot de lait pasteurisé."
     )
 
-
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -468,23 +422,19 @@ elif page == "🔬 Nouvelle analyse":
             "📦 Identification"
         )
 
-
         batch_id = st.text_input(
             "Numéro de lot",
             placeholder="Exemple : LOT-006"
         )
-
 
         product_name = st.text_input(
             "Nom du produit",
             value="Lait pasteurisé"
         )
 
-
         st.subheader(
             "🌡️ Conditions de stockage"
         )
-
 
         temperature = st.number_input(
             "Température de stockage (°C)",
@@ -494,7 +444,6 @@ elif page == "🔬 Nouvelle analyse":
             step=0.1
         )
 
-
         storage_days = st.number_input(
             "Durée de stockage (jours)",
             min_value=0,
@@ -503,13 +452,11 @@ elif page == "🔬 Nouvelle analyse":
             step=1
         )
 
-
     with col2:
 
         st.subheader(
             "🧪 Paramètres qualité"
         )
-
 
         ph = st.number_input(
             "Valeur pH",
@@ -519,38 +466,31 @@ elif page == "🔬 Nouvelle analyse":
             step=0.1
         )
 
-
         st.subheader(
             "🧼 Contrôles"
         )
-
 
         cold_chain_broken = st.checkbox(
             "Interruption de la chaîne du froid"
         )
 
-
         hygiene_controlled = st.checkbox(
-            "Conditions d'hygiène maîtrisées",
+            "Conditions d’hygiène maîtrisées",
             value=True
         )
-
 
         pasteurized = st.checkbox(
             "Produit pasteurisé",
             value=True
         )
 
-
     st.divider()
-
 
     start_analysis = st.button(
         "🚀 LANCER L'ANALYSE FOODNEXA",
         use_container_width=True,
         type="primary"
     )
-
 
     if start_analysis:
 
@@ -562,7 +502,6 @@ elif page == "🔬 Nouvelle analyse":
 
             st.stop()
 
-
         if not product_name.strip():
 
             st.warning(
@@ -570,7 +509,6 @@ elif page == "🔬 Nouvelle analyse":
             )
 
             st.stop()
-
 
         try:
 
@@ -591,7 +529,6 @@ elif page == "🔬 Nouvelle analyse":
                 batch_id=batch_id,
 
                 product_name=product_name
-
             )
 
         except Exception as error:
@@ -606,19 +543,15 @@ elif page == "🔬 Nouvelle analyse":
 
             st.stop()
 
-
         st.success(
             "✅ Analyse FOODNEXA terminée."
         )
-
 
         st.subheader(
             "📊 Résultat"
         )
 
-
         r1, r2, r3 = st.columns(3)
-
 
         with r1:
 
@@ -627,7 +560,6 @@ elif page == "🔬 Nouvelle analyse":
                 f"{report['risk_score']}/100"
             )
 
-
         with r2:
 
             st.metric(
@@ -635,14 +567,12 @@ elif page == "🔬 Nouvelle analyse":
                 report["risk_level"]
             )
 
-
         with r3:
 
             st.metric(
                 "CONFIDENCE",
                 f"{report['confidence']:.1f}%"
             )
-
 
         if report["risk_level"] == "Élevé":
 
@@ -662,11 +592,9 @@ elif page == "🔬 Nouvelle analyse":
                 "🟢 RISQUE FAIBLE"
             )
 
-
         st.subheader(
             "🔎 Facteurs analysés"
         )
-
 
         factor_names = {
 
@@ -689,9 +617,7 @@ elif page == "🔬 Nouvelle analyse":
                 "Pasteurisation"
         }
 
-
         factor_data = []
-
 
         for factor_name, factor in report["factors"].items():
 
@@ -714,11 +640,9 @@ elif page == "🔬 Nouvelle analyse":
                 }
             )
 
-
         factors_df = pd.DataFrame(
             factor_data
         )
-
 
         st.dataframe(
             factors_df,
@@ -726,11 +650,9 @@ elif page == "🔬 Nouvelle analyse":
             hide_index=True
         )
 
-
         st.subheader(
             "⚠️ Facteurs de risque détectés"
         )
-
 
         if report["reasons"]:
 
@@ -746,18 +668,15 @@ elif page == "🔬 Nouvelle analyse":
                 "Aucun facteur de risque détecté."
             )
 
-
         st.subheader(
             "💡 Recommandations"
         )
-
 
         for recommendation in report["recommendations"]:
 
             st.info(
                 recommendation
             )
-
 
         row = {
 
@@ -829,11 +748,9 @@ elif page == "🔬 Nouvelle analyse":
                 )
         }
 
-
         new_row = pd.DataFrame(
             [row]
         )
-
 
         try:
 
@@ -855,18 +772,15 @@ elif page == "🔬 Nouvelle analyse":
 
                 final_data = new_row
 
-
             final_data.to_csv(
                 CSV_FILE,
                 index=False,
                 encoding="utf-8-sig"
             )
 
-
             st.success(
                 f"💾 Lot {batch_id} enregistré."
             )
-
 
         except Exception as error:
 
@@ -890,37 +804,31 @@ elif page == "🧪 Research Data":
         "🧪 FOODNEXA Research Data"
     )
 
-
     st.write(
         "Interface de collecte structurée des données "
         "destinées à la recherche et au développement "
         "du futur modèle prédictif."
     )
 
-
     st.warning(
         """
-        ⚠️ N'enregistrez ici que des résultats réels,
-        identifiés comme tels, ou des données synthétiques
-        clairement documentées comme synthétiques.
+        ⚠️ Utilisez uniquement des données réelles correctement
+        identifiées ou des données synthétiques clairement
+        documentées comme synthétiques.
         """
     )
 
-
     st.divider()
 
-
     # =================================================
-    # DATA ENTRY
+    # ADD OBSERVATION
     # =================================================
 
     st.subheader(
         "📝 Ajouter une observation"
     )
 
-
     research_col1, research_col2 = st.columns(2)
-
 
     with research_col1:
 
@@ -930,13 +838,11 @@ elif page == "🧪 Research Data":
             key="research_batch_id"
         )
 
-
         research_product = st.text_input(
             "Produit",
             value="Lait pasteurisé",
             key="research_product"
         )
-
 
         research_temperature = st.number_input(
             "Température (°C)",
@@ -947,7 +853,6 @@ elif page == "🧪 Research Data":
             key="research_temperature"
         )
 
-
         research_storage = st.number_input(
             "Durée de stockage (jours)",
             min_value=0,
@@ -956,7 +861,6 @@ elif page == "🧪 Research Data":
             step=1,
             key="research_storage"
         )
-
 
         research_ph = st.number_input(
             "pH",
@@ -967,7 +871,6 @@ elif page == "🧪 Research Data":
             key="research_ph"
         )
 
-
     with research_col2:
 
         research_cold_chain = st.checkbox(
@@ -975,13 +878,11 @@ elif page == "🧪 Research Data":
             key="research_cold_chain"
         )
 
-
         research_hygiene = st.checkbox(
             "Hygiène maîtrisée",
             value=True,
             key="research_hygiene"
         )
-
 
         research_pasteurized = st.checkbox(
             "Produit pasteurisé",
@@ -989,21 +890,17 @@ elif page == "🧪 Research Data":
             key="research_pasteurized"
         )
 
-
         st.markdown(
             "#### 🧫 Résultats microbiologiques"
         )
-
 
         total_viable_count = st.number_input(
             "Total Viable Count",
             min_value=0.0,
             value=0.0,
             step=1.0,
-            help="Entrer 0 uniquement si aucune donnée n'est disponible.",
             key="total_viable_count"
         )
-
 
         enterobacteriaceae_count = st.number_input(
             "Enterobacteriaceae",
@@ -1013,7 +910,6 @@ elif page == "🧪 Research Data":
             key="enterobacteriaceae_count"
         )
 
-
         coliform_count = st.number_input(
             "Coliforms",
             min_value=0.0,
@@ -1021,7 +917,6 @@ elif page == "🧪 Research Data":
             step=1.0,
             key="coliform_count"
         )
-
 
         staphylococcus_aureus_count = st.number_input(
             "Staphylococcus aureus",
@@ -1031,14 +926,11 @@ elif page == "🧪 Research Data":
             key="staphylococcus_aureus_count"
         )
 
-
     st.markdown(
         "#### 🦠 Résultats pathogènes / qualité"
     )
 
-
     path_col1, path_col2, path_col3 = st.columns(3)
-
 
     with path_col1:
 
@@ -1052,7 +944,6 @@ elif page == "🧪 Research Data":
             key="salmonella_detected"
         )
 
-
     with path_col2:
 
         sensory_status = st.selectbox(
@@ -1064,7 +955,6 @@ elif page == "🧪 Research Data":
             ],
             key="sensory_status"
         )
-
 
     with path_col3:
 
@@ -1078,7 +968,6 @@ elif page == "🧪 Research Data":
             key="nonconformity_detected"
         )
 
-
     expert_risk_label = st.selectbox(
         "Expert Risk Label",
         [
@@ -1090,16 +979,13 @@ elif page == "🧪 Research Data":
         key="expert_risk_label"
     )
 
-
     st.divider()
-
 
     save_research = st.button(
         "💾 ENREGISTRER L'OBSERVATION",
         use_container_width=True,
         type="primary"
     )
-
 
     if save_research:
 
@@ -1110,7 +996,6 @@ elif page == "🧪 Research Data":
             )
 
             st.stop()
-
 
         new_research_row = {
 
@@ -1163,21 +1048,20 @@ elif page == "🧪 Research Data":
                 expert_risk_label
         }
 
-
         new_research_df = pd.DataFrame(
             [new_research_row],
             columns=RESEARCH_COLUMNS
         )
 
-
         try:
 
-            if os.path.exists(RESEARCH_CSV_FILE):
+            if os.path.exists(
+                RESEARCH_CSV_FILE
+            ):
 
                 old_research = pd.read_csv(
                     RESEARCH_CSV_FILE
                 )
-
 
                 for column in RESEARCH_COLUMNS:
 
@@ -1185,11 +1069,9 @@ elif page == "🧪 Research Data":
 
                         old_research[column] = ""
 
-
                 old_research = old_research[
                     RESEARCH_COLUMNS
                 ]
-
 
                 final_research = pd.concat(
                     [
@@ -1203,22 +1085,18 @@ elif page == "🧪 Research Data":
 
                 final_research = new_research_df
 
-
             final_research.to_csv(
                 RESEARCH_CSV_FILE,
                 index=False,
                 encoding="utf-8-sig"
             )
 
-
             research_data = final_research
-
 
             st.success(
                 f"✅ Observation {research_batch_id} "
                 "enregistrée dans le Research Dataset."
             )
-
 
         except Exception as error:
 
@@ -1232,18 +1110,18 @@ elif page == "🧪 Research Data":
 
 
     # =================================================
-    # RESEARCH DATASET VIEW
+    # DATASET
     # =================================================
 
     st.divider()
-
 
     st.subheader(
         "📊 Research Dataset"
     )
 
-
-    if os.path.exists(RESEARCH_CSV_FILE):
+    if os.path.exists(
+        RESEARCH_CSV_FILE
+    ):
 
         try:
 
@@ -1251,12 +1129,10 @@ elif page == "🧪 Research Data":
                 RESEARCH_CSV_FILE
             )
 
-
             st.metric(
                 "Nombre d'observations",
                 len(research_view)
             )
-
 
             st.dataframe(
                 research_view,
@@ -1264,77 +1140,217 @@ elif page == "🧪 Research Data":
                 hide_index=True
             )
 
+        except Exception as error:
 
-            # -----------------------------------------
-            # DATA QUALITY CHECK
-            # -----------------------------------------
-
-            st.subheader(
-                "🔍 Data Quality Check"
+            st.error(
+                "Impossible de lire le Research Dataset."
             )
 
+            st.code(
+                str(error)
+            )
 
-            total_rows = len(
+            research_view = pd.DataFrame()
+
+    else:
+
+        st.info(
+            "Aucune observation enregistrée pour le moment."
+        )
+
+        research_view = pd.DataFrame(
+            columns=RESEARCH_COLUMNS
+        )
+
+
+    # =================================================
+    # DATA QUALITY ENGINE
+    # =================================================
+
+    st.divider()
+
+    st.subheader(
+        "🔍 FOODNEXA Data Quality Check"
+    )
+
+    if not research_view.empty:
+
+        try:
+
+            quality_report = generate_quality_report(
                 research_view
             )
 
+            q1, q2, q3, q4 = st.columns(4)
 
-            if total_rows > 0:
+            with q1:
 
-                missing_values = int(
-                    research_view.isna().sum().sum()
+                st.metric(
+                    "Observations",
+                    quality_report["rows"]
+                )
+
+            with q2:
+
+                st.metric(
+                    "Colonnes",
+                    quality_report["columns"]
+                )
+
+            with q3:
+
+                st.metric(
+                    "Quality Score",
+                    f"{quality_report['quality_score']:.1f}%"
+                )
+
+            with q4:
+
+                st.metric(
+                    "Doublons",
+                    quality_report["duplicates"]
                 )
 
 
-                duplicate_rows = int(
-                    research_view.duplicated().sum()
+            # -----------------------------------------
+            # STATUS
+            # -----------------------------------------
+
+            if quality_report["status"] == "GOOD":
+
+                st.success(
+                    "🟢 DATASET STATUS: GOOD"
+                )
+
+            else:
+
+                st.warning(
+                    "🟠 DATASET STATUS: REVIEW REQUIRED"
                 )
 
 
-                q1, q2 = st.columns(2)
+            # -----------------------------------------
+            # MISSING COLUMNS
+            # -----------------------------------------
 
+            if quality_report["missing_columns"]:
 
-                with q1:
+                st.error(
+                    "❌ Colonnes obligatoires manquantes:"
+                )
 
-                    st.metric(
-                        "Valeurs manquantes",
-                        missing_values
+                for column in quality_report[
+                    "missing_columns"
+                ]:
+
+                    st.write(
+                        f"• {column}"
                     )
 
+            else:
 
-                with q2:
-
-                    st.metric(
-                        "Lignes dupliquées",
-                        duplicate_rows
-                    )
+                st.success(
+                    "✅ Toutes les colonnes requises "
+                    "sont présentes."
+                )
 
 
-                if missing_values == 0:
+            # -----------------------------------------
+            # MISSING VALUES
+            # -----------------------------------------
 
-                    st.success(
-                        "✅ Aucune valeur manquante détectée."
-                    )
+            st.subheader(
+                "📋 Valeurs manquantes"
+            )
 
-                else:
+            if quality_report["missing_values"]:
+
+                missing_df = pd.DataFrame(
+                    [
+                        {
+                            "Variable": column,
+                            "Valeurs manquantes": count
+                        }
+                        for column, count
+                        in quality_report[
+                            "missing_values"
+                        ].items()
+                    ]
+                )
+
+                st.dataframe(
+                    missing_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            else:
+
+                st.success(
+                    "✅ Aucune valeur manquante détectée."
+                )
+
+
+            # -----------------------------------------
+            # DUPLICATES
+            # -----------------------------------------
+
+            st.subheader(
+                "♻️ Doublons"
+            )
+
+            if quality_report["duplicates"] == 0:
+
+                st.success(
+                    "✅ Aucun doublon détecté."
+                )
+
+            else:
+
+                st.warning(
+                    f"⚠️ {quality_report['duplicates']} "
+                    "doublon(s) détecté(s)."
+                )
+
+
+            # -----------------------------------------
+            # RANGE ISSUES
+            # -----------------------------------------
+
+            st.subheader(
+                "📏 Contrôle des plages de valeurs"
+            )
+
+            if quality_report["range_issues"]:
+
+                for issue in quality_report[
+                    "range_issues"
+                ]:
 
                     st.warning(
-                        f"⚠️ {missing_values} valeur(s) "
-                        "manquante(s) détectée(s)."
+                        f"⚠️ {issue}"
                     )
 
+            else:
 
-                if duplicate_rows == 0:
+                st.success(
+                    "✅ Aucune anomalie de plage détectée."
+                )
 
-                    st.success(
-                        "✅ Aucun doublon détecté."
-                    )
 
-                else:
+            # -----------------------------------------
+            # SCIENTIFIC NOTE
+            # -----------------------------------------
 
-                    st.warning(
-                        f"⚠️ {duplicate_rows} doublon(s) détecté(s)."
-                    )
+            st.info(
+                """
+                **Important :** le Data Quality Score mesure
+                la qualité technique du dataset uniquement.
+                Ce n'est pas un score de sécurité alimentaire
+                et ce n'est pas une validation scientifique
+                du futur modèle prédictif.
+                """
+            )
 
 
             # -----------------------------------------
@@ -1345,13 +1361,11 @@ elif page == "🧪 Research Data":
                 "📥 Export"
             )
 
-
             research_csv = research_view.to_csv(
                 index=False
             ).encode(
                 "utf-8-sig"
             )
-
 
             st.download_button(
                 "⬇️ Télécharger Research Dataset",
@@ -1365,7 +1379,8 @@ elif page == "🧪 Research Data":
         except Exception as error:
 
             st.error(
-                "Impossible de lire le Research Dataset."
+                "❌ Le Data Quality Engine "
+                "a rencontré une erreur."
             )
 
             st.code(
@@ -1375,7 +1390,8 @@ elif page == "🧪 Research Data":
     else:
 
         st.info(
-            "Aucune observation enregistrée pour le moment."
+            "Ajoutez au moins une observation "
+            "pour lancer le Data Quality Check."
         )
 
 
@@ -1389,7 +1405,6 @@ elif page == "📁 Historique":
         "📁 Historique FOODNEXA"
     )
 
-
     if history.empty:
 
         st.info(
@@ -1399,9 +1414,9 @@ elif page == "📁 Historique":
     else:
 
         st.write(
-            f"Nombre total d'analyses : **{len(history)}**"
+            f"Nombre total d'analyses : "
+            f"**{len(history)}**"
         )
-
 
         st.dataframe(
             history,
@@ -1409,16 +1424,13 @@ elif page == "📁 Historique":
             hide_index=True
         )
 
-
         st.divider()
-
 
         csv_data = history.to_csv(
             index=False
         ).encode(
             "utf-8-sig"
         )
-
 
         st.download_button(
             "⬇️ Télécharger le dataset CSV",
@@ -1439,24 +1451,21 @@ elif page == "🧬 Research Prototype":
         "🧬 FOODNEXA Research Prototype"
     )
 
-
     st.info(
         """
         **FOODNEXA** est actuellement un prototype
         expérimental basé sur des règles explicables.
 
-        L'objectif de cette phase est de construire
-        progressivement une base de données structurée
-        permettant ensuite d'étudier des approches
-        statistiques et de Machine Learning.
+        L'objectif est de construire progressivement
+        une base de données structurée permettant
+        ensuite d'étudier des approches statistiques
+        et de Machine Learning.
         """
     )
-
 
     st.subheader(
         "🔬 Architecture actuelle"
     )
-
 
     architecture = pd.DataFrame(
         {
@@ -1467,7 +1476,10 @@ elif page == "🧬 Research Prototype":
                 "Risk Classification",
                 "Recommendations",
                 "Research Dataset",
-                "Machine Learning"
+                "Data Quality Engine",
+                "Feature Engineering",
+                "Machine Learning",
+                "Validation"
             ],
 
             "État": [
@@ -1476,12 +1488,14 @@ elif page == "🧬 Research Prototype":
                 "Disponible",
                 "Disponible",
                 "Disponible",
-                "En construction",
+                "Disponible",
+                "Disponible",
+                "À développer",
+                "À développer",
                 "À développer"
             ]
         }
     )
-
 
     st.dataframe(
         architecture,
@@ -1489,11 +1503,9 @@ elif page == "🧬 Research Prototype":
         hide_index=True
     )
 
-
     st.subheader(
         "🎯 Objectif scientifique"
     )
-
 
     st.write(
         """
@@ -1503,12 +1515,49 @@ elif page == "🧬 Research Prototype":
         des résultats microbiologiques et des observations
         d'experts.
 
-        Le dataset pourra ensuite être utilisé pour étudier
-        et comparer différentes approches de prévision du
-        risque alimentaire.
+        Après contrôle de qualité et préparation des variables,
+        le dataset pourra être utilisé pour étudier et comparer
+        différentes approches de prévision du risque.
         """
     )
 
+    st.subheader(
+        "🧠 Pipeline prévu"
+    )
+
+    pipeline = pd.DataFrame(
+        {
+            "Étape": [
+                "Collecte des données",
+                "Data Quality",
+                "Nettoyage",
+                "Feature Engineering",
+                "Séparation Train/Test",
+                "Entraînement ML",
+                "Validation",
+                "Évaluation",
+                "Risk Prediction"
+            ],
+
+            "Statut": [
+                "En cours",
+                "Disponible",
+                "À développer",
+                "À développer",
+                "À développer",
+                "À développer",
+                "À développer",
+                "À développer",
+                "À développer"
+            ]
+        }
+    )
+
+    st.dataframe(
+        pipeline,
+        use_container_width=True,
+        hide_index=True
+    )
 
     st.warning(
         """
@@ -1525,7 +1574,6 @@ elif page == "🧬 Research Prototype":
 # =====================================================
 
 st.divider()
-
 
 st.markdown(
     """
