@@ -1,0 +1,227 @@
+
+import os
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(
+    page_title="FOODNEXA | Traceability",
+    page_icon="📦",
+    layout="wide",
+)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+ASSESSMENTS_FILE = BASE_DIR / "agronexus_assessments.csv"
+RESEARCH_FILE = BASE_DIR / "foodnexa_research_dataset.csv"
+
+st.title("📦 FOODNEXA — Traceability & Lot Tracking")
+st.caption(
+    "Suivi des lots, recherche, contrôle des doublons "
+    "et export des données."
+)
+
+st.warning(
+    "Prototype expérimental : vérifiez les données et les résultats "
+    "avant toute décision opérationnelle de sécurité alimentaire."
+)
+
+
+def load_csv(path):
+    """Charge un CSV sans interrompre la page en cas de fichier absent."""
+    if not path.exists():
+        return pd.DataFrame()
+
+    try:
+        return pd.read_csv(path)
+    except Exception as exc:
+        st.error(f"Impossible de lire {path.name}: {exc}")
+        return pd.DataFrame()
+
+
+def normalize_id(series):
+    """Normalise les identifiants pour faciliter les comparaisons."""
+    return series.astype("string").str.strip().str.upper()
+
+
+assessments = load_csv(ASSESSMENTS_FILE)
+research = load_csv(RESEARCH_FILE)
+
+# Préparer séparément les deux sources sans modifier les fichiers d'origine.
+sources = []
+
+if not assessments.empty:
+    df = assessments.copy()
+    df["source_type"] = "Analyse de risque"
+    sources.append(df)
+
+if not research.empty:
+    df = research.copy()
+    df["source_type"] = "Research Data"
+    sources.append(df)
+
+if not sources:
+    st.info(
+        "Aucune donnée trouvée. Enregistrez une analyse ou une observation "
+        "dans FOODNEXA, puis revenez sur cette page."
+    )
+    st.stop()
+
+all_data = pd.concat(sources, ignore_index=True, sort=False)
+
+if "batch_id" not in all_data.columns:
+    all_data["batch_id"] = ""
+
+if "product_name" not in all_data.columns:
+    all_data["product_name"] = ""
+
+all_data["batch_id"] = all_data["batch_id"].fillna("").astype(str).str.strip()
+all_data["product_name"] = (
+    all_data["product_name"].fillna("").astype(str).str.strip()
+)
+
+# Métriques générales
+total_records = len(all_data)
+unique_batches = all_data.loc[
+    all_data["batch_id"].ne(""), "batch_id"
+].nunique()
+
+ids = all_data.loc[all_data["batch_id"].ne(), "batch_id"]
+normalized_ids = normalize_id(ids)
+duplicate_records = int(normalized_ids.duplicated(keep=False).sum())
+
+m1, m2, m3 = st.columns(3)
+m1.metric("Enregistrements", total_records)
+m2.metric("Identifiants de lots uniques", unique_batches)
+m3.metric("Lignes avec ID répété", duplicate_records)
+
+st.divider()
+
+# Recherche et filtres
+st.subheader("🔎 Rechercher un lot")
+
+search_text = st.text_input(
+    "Numéro de lot ou nom du produit",
+    placeholder="Exemple : LOT-001 ou lait pasteurisé",
+)
+
+available_sources = sorted(all_data["source_type"].dropna().unique().tolist())
+selected_sources = st.multiselect(
+    "Type de données",
+    options=available_sources,
+    default=available_sources,
+)
+
+filtered = all_data[
+    all_data["source_type"].isin(selected_sources)
+].copy()
+
+if search_text.strip():
+    term = search_text.strip().casefold()
+    mask = (
+        filtered["batch_id"].str.casefold().str.contains(term, na=False)
+        | filtered["product_name"].str.casefold().str.contains(term, na=False)
+    )
+    filtered = filtered[mask]
+
+# Repérer les identifiants identiques sans supprimer aucune ligne.
+filtered["_normalized_id"] = normalize_id(filtered["batch_id"])
+valid_ids = filtered["_normalized_id"].ne("")
+filtered["_id_repeated"] = False
+filtered.loc[valid_ids, "_id_repeated"] = (
+    filtered.loc[valid_ids, "_normalized_id"]
+    .duplicated(keep=False)
+)
+
+st.subheader("📋 Registre des lots")
+
+display_columns = [
+    "source_type",
+    "batch_id",
+    "product_name",
+    "analysis_date",
+    "risk_score",
+    "risk_level",
+    "temperature_celsius",
+    "storage_days",
+    "ph",
+    "expert_risk_label",
+    "_id_repeated",
+]
+
+# Ne montrer que les colonnes disponibles dans les données.
+visible_columns = [c for c in display_columns if c in filtered.columns]
+
+if "_id_repeated" in visible_columns:
+    filtered = filtered.rename(
+        columns={"_id_repeated": "ID répété ?"}
+    )
+    visible_columns = [
+        "ID répété ?" if c == "_id_repeated" else c
+        for c in visible_columns
+    ]
+
+if filtered.empty:
+    st.info("Aucun lot ne correspond à cette recherche.")
+else:
+    st.dataframe(
+        filtered[visible_columns],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.download_button(
+        "⬇️ Exporter les résultats filtrés (CSV)",
+        data=filtered.drop(
+            columns=["_normalized_id", "ID répété ?"],
+            errors="ignore",
+        ).to_csv(index=False).encode("utf-8-sig"),
+        file_name="foodnexa_traceability_export.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+st.divider()
+
+# Détail d'un lot
+st.subheader("🧾 Fiche détaillée d'un lot")
+
+batch_options = sorted(
+    filtered.loc[filtered["batch_id"].ne(""), "batch_id"].unique().tolist()
+)
+
+if batch_options:
+    chosen_batch = st.selectbox("Choisir un lot", batch_options)
+
+    details = filtered[
+        filtered["batch_id"].str.casefold()
+        == chosen_batch.casefold()
+    ].copy()
+
+    for index, (_, record) in enumerate(details.iterrows(), start=1):
+        st.markdown(f"#### Enregistrement {index} — {record.get('source_type', 'Source inconnue')}")
+
+        detail_data = record.drop(
+            labels=["_normalized_id", "ID répété ?"],
+            errors="ignore",
+        )
+        detail_df = pd.DataFrame({
+            "Champ": detail_data.index.astype(str),
+            "Valeur": detail_data.fillna("").astype(str).values,
+        })
+
+        st.dataframe(
+            detail_df,
+            use_container_width=True,
+            hide_index=True,
+        )
+else:
+    st.caption("Aucun identifiant de lot disponible pour afficher une fiche.")
+
+st.caption(
+    "FOODNEXA v1.1 — Outil expérimental de traçabilité. "
+    "Un ID identique peut apparaître dans plusieurs sources ; "
+    "vérifiez les enregistrements avant de conclure à une erreur. "
+    "Les fichiers CSV locaux ne constituent pas un stockage cloud permanent."
+)
