@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 import os
 
+
+# =====================================================
+# IMPORTS
+# =====================================================
+
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
 
@@ -168,7 +173,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 st.markdown(
     '<div class="foodnexa-line"></div>',
     unsafe_allow_html=True
@@ -197,6 +201,7 @@ with st.sidebar:
             "📊 Dashboard",
             "🔬 Nouvelle analyse",
             "🧪 Research Data",
+            "📊 Research Analytics",
             "📁 Historique",
             "🧬 Research Prototype"
         ]
@@ -513,21 +518,13 @@ elif page == "🔬 Nouvelle analyse":
         try:
 
             report = assess_dairy_food_safety_risk(
-
                 temperature=temperature,
-
                 storage_days=storage_days,
-
                 ph=ph,
-
                 cold_chain_broken=cold_chain_broken,
-
                 hygiene_controlled=hygiene_controlled,
-
                 pasteurized=pasteurized,
-
                 batch_id=batch_id,
-
                 product_name=product_name
             )
 
@@ -554,21 +551,18 @@ elif page == "🔬 Nouvelle analyse":
         r1, r2, r3 = st.columns(3)
 
         with r1:
-
             st.metric(
                 "RISK SCORE",
                 f"{report['risk_score']}/100"
             )
 
         with r2:
-
             st.metric(
                 "RISK LEVEL",
                 report["risk_level"]
             )
 
         with r3:
-
             st.metric(
                 "CONFIDENCE",
                 f"{report['confidence']:.1f}%"
@@ -597,24 +591,12 @@ elif page == "🔬 Nouvelle analyse":
         )
 
         factor_names = {
-
-            "temperature":
-                "Température",
-
-            "storage_duration":
-                "Durée de stockage",
-
-            "ph":
-                "pH",
-
-            "cold_chain":
-                "Chaîne du froid",
-
-            "hygiene":
-                "Hygiène",
-
-            "pasteurization":
-                "Pasteurisation"
+            "temperature": "Température",
+            "storage_duration": "Durée de stockage",
+            "ph": "pH",
+            "cold_chain": "Chaîne du froid",
+            "hygiene": "Hygiène",
+            "pasteurization": "Pasteurisation"
         }
 
         factor_data = []
@@ -819,10 +801,6 @@ elif page == "🧪 Research Data":
     )
 
     st.divider()
-
-    # =================================================
-    # ADD OBSERVATION
-    # =================================================
 
     st.subheader(
         "📝 Ajouter une observation"
@@ -1108,11 +1086,6 @@ elif page == "🧪 Research Data":
                 str(error)
             )
 
-
-    # =================================================
-    # DATASET
-    # =================================================
-
     st.divider()
 
     st.subheader(
@@ -1162,9 +1135,8 @@ elif page == "🧪 Research Data":
             columns=RESEARCH_COLUMNS
         )
 
-
     # =================================================
-    # DATA QUALITY ENGINE
+    # DATA QUALITY
     # =================================================
 
     st.divider()
@@ -1211,11 +1183,6 @@ elif page == "🧪 Research Data":
                     quality_report["duplicates"]
                 )
 
-
-            # -----------------------------------------
-            # STATUS
-            # -----------------------------------------
-
             if quality_report["status"] == "GOOD":
 
                 st.success(
@@ -1227,11 +1194,6 @@ elif page == "🧪 Research Data":
                 st.warning(
                     "🟠 DATASET STATUS: REVIEW REQUIRED"
                 )
-
-
-            # -----------------------------------------
-            # MISSING COLUMNS
-            # -----------------------------------------
 
             if quality_report["missing_columns"]:
 
@@ -1253,11 +1215,6 @@ elif page == "🧪 Research Data":
                     "✅ Toutes les colonnes requises "
                     "sont présentes."
                 )
-
-
-            # -----------------------------------------
-            # MISSING VALUES
-            # -----------------------------------------
 
             st.subheader(
                 "📋 Valeurs manquantes"
@@ -1290,11 +1247,6 @@ elif page == "🧪 Research Data":
                     "✅ Aucune valeur manquante détectée."
                 )
 
-
-            # -----------------------------------------
-            # DUPLICATES
-            # -----------------------------------------
-
             st.subheader(
                 "♻️ Doublons"
             )
@@ -1311,11 +1263,6 @@ elif page == "🧪 Research Data":
                     f"⚠️ {quality_report['duplicates']} "
                     "doublon(s) détecté(s)."
                 )
-
-
-            # -----------------------------------------
-            # RANGE ISSUES
-            # -----------------------------------------
 
             st.subheader(
                 "📏 Contrôle des plages de valeurs"
@@ -1337,11 +1284,6 @@ elif page == "🧪 Research Data":
                     "✅ Aucune anomalie de plage détectée."
                 )
 
-
-            # -----------------------------------------
-            # SCIENTIFIC NOTE
-            # -----------------------------------------
-
             st.info(
                 """
                 **Important :** le Data Quality Score mesure
@@ -1351,11 +1293,6 @@ elif page == "🧪 Research Data":
                 du futur modèle prédictif.
                 """
             )
-
-
-            # -----------------------------------------
-            # DOWNLOAD
-            # -----------------------------------------
 
             st.subheader(
                 "📥 Export"
@@ -1375,7 +1312,6 @@ elif page == "🧪 Research Data":
                 use_container_width=True
             )
 
-
         except Exception as error:
 
             st.error(
@@ -1393,6 +1329,588 @@ elif page == "🧪 Research Data":
             "Ajoutez au moins une observation "
             "pour lancer le Data Quality Check."
         )
+
+
+# =====================================================
+# RESEARCH ANALYTICS
+# =====================================================
+
+elif page == "📊 Research Analytics":
+
+    st.title(
+        "📊 FOODNEXA Research Analytics"
+    )
+
+    st.write(
+        "Analyse exploratoire du Research Dataset "
+        "pour identifier les tendances et les facteurs "
+        "associés aux niveaux de risque."
+    )
+
+    st.warning(
+        """
+        ⚠️ Cette analyse est exploratoire.
+        Elle ne constitue pas encore un modèle prédictif
+        validé scientifiquement.
+        """
+    )
+
+    if not os.path.exists(
+        RESEARCH_CSV_FILE
+    ):
+
+        st.info(
+            "Aucun Research Dataset disponible."
+        )
+
+    else:
+
+        try:
+
+            analytics_data = pd.read_csv(
+                RESEARCH_CSV_FILE
+            )
+
+            if analytics_data.empty:
+
+                st.info(
+                    "Le Research Dataset est vide."
+                )
+
+            else:
+
+                # -----------------------------------------
+                # PREPARATION
+                # -----------------------------------------
+
+                numeric_columns = [
+                    "temperature_celsius",
+                    "storage_days",
+                    "ph",
+                    "total_viable_count",
+                    "enterobacteriaceae_count",
+                    "coliform_count",
+                    "staphylococcus_aureus_count"
+                ]
+
+                for column in numeric_columns:
+
+                    if column in analytics_data.columns:
+
+                        analytics_data[column] = pd.to_numeric(
+                            analytics_data[column],
+                            errors="coerce"
+                        )
+
+                risk_mapping = {
+                    "Faible": 0,
+                    "Modéré": 1,
+                    "Élevé": 2
+                }
+
+                if "expert_risk_label" in analytics_data.columns:
+
+                    analytics_data["risk_numeric"] = (
+                        analytics_data[
+                            "expert_risk_label"
+                        ].map(
+                            risk_mapping
+                        )
+                    )
+
+                # -----------------------------------------
+                # TOP METRICS
+                # -----------------------------------------
+
+                st.subheader(
+                    "📌 Vue générale"
+                )
+
+                total_observations = len(
+                    analytics_data
+                )
+
+                number_of_classes = 0
+
+                if "expert_risk_label" in analytics_data.columns:
+
+                    number_of_classes = (
+                        analytics_data[
+                            "expert_risk_label"
+                        ]
+                        .replace(
+                            "Non attribué",
+                            pd.NA
+                        )
+                        .dropna()
+                        .nunique()
+                    )
+
+                salmonella_rate = 0.0
+
+                if "salmonella_detected" in analytics_data.columns:
+
+                    salmonella_rate = (
+                        analytics_data[
+                            "salmonella_detected"
+                        ]
+                        .astype(str)
+                        .str.strip()
+                        .str.lower()
+                        .eq("détectée")
+                        .mean()
+                        * 100
+                    )
+
+                nonconformity_rate = 0.0
+
+                if "nonconformity_detected" in analytics_data.columns:
+
+                    nonconformity_rate = (
+                        analytics_data[
+                            "nonconformity_detected"
+                        ]
+                        .astype(str)
+                        .str.strip()
+                        .str.lower()
+                        .eq("oui")
+                        .mean()
+                        * 100
+                    )
+
+                a1, a2, a3, a4 = st.columns(4)
+
+                with a1:
+
+                    st.metric(
+                        "Observations",
+                        total_observations
+                    )
+
+                with a2:
+
+                    st.metric(
+                        "Classes de risque",
+                        number_of_classes
+                    )
+
+                with a3:
+
+                    st.metric(
+                        "Salmonella détectée",
+                        f"{salmonella_rate:.1f}%"
+                    )
+
+                with a4:
+
+                    st.metric(
+                        "Non-conformités",
+                        f"{nonconformity_rate:.1f}%"
+                    )
+
+                st.divider()
+
+                # -----------------------------------------
+                # RISK DISTRIBUTION
+                # -----------------------------------------
+
+                st.subheader(
+                    "🎯 Distribution des niveaux de risque"
+                )
+
+                if "expert_risk_label" in analytics_data.columns:
+
+                    risk_distribution = (
+                        analytics_data[
+                            "expert_risk_label"
+                        ]
+                        .value_counts()
+                        .reindex(
+                            [
+                                "Faible",
+                                "Modéré",
+                                "Élevé"
+                            ],
+                            fill_value=0
+                        )
+                    )
+
+                    distribution_df = pd.DataFrame(
+                        {
+                            "Niveau de risque":
+                                risk_distribution.index,
+                            "Nombre":
+                                risk_distribution.values
+                        }
+                    )
+
+                    st.bar_chart(
+                        distribution_df.set_index(
+                            "Niveau de risque"
+                        )
+                    )
+
+                    percentage_df = distribution_df.copy()
+
+                    percentage_df["Pourcentage"] = (
+                        percentage_df["Nombre"]
+                        / total_observations
+                        * 100
+                    ).round(1)
+
+                    st.dataframe(
+                        percentage_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+                st.divider()
+
+                # -----------------------------------------
+                # DESCRIPTIVE STATISTICS
+                # -----------------------------------------
+
+                st.subheader(
+                    "📐 Statistiques descriptives"
+                )
+
+                statistic_rows = []
+
+                statistic_labels = {
+                    "temperature_celsius":
+                        "Température moyenne (°C)",
+
+                    "storage_days":
+                        "Durée moyenne de stockage (jours)",
+
+                    "ph":
+                        "pH moyen",
+
+                    "total_viable_count":
+                        "Total Viable Count moyen",
+
+                    "enterobacteriaceae_count":
+                        "Enterobacteriaceae moyen",
+
+                    "coliform_count":
+                        "Coliformes moyen",
+
+                    "staphylococcus_aureus_count":
+                        "Staphylococcus aureus moyen"
+                }
+
+                for column, label in statistic_labels.items():
+
+                    if column in analytics_data.columns:
+
+                        statistic_rows.append(
+                            {
+                                "Variable":
+                                    label,
+
+                                "Moyenne":
+                                    round(
+                                        analytics_data[
+                                            column
+                                        ].mean(),
+                                        2
+                                    ),
+
+                                "Médiane":
+                                    round(
+                                        analytics_data[
+                                            column
+                                        ].median(),
+                                        2
+                                    ),
+
+                                "Minimum":
+                                    round(
+                                        analytics_data[
+                                            column
+                                        ].min(),
+                                        2
+                                    ),
+
+                                "Maximum":
+                                    round(
+                                        analytics_data[
+                                            column
+                                        ].max(),
+                                        2
+                                    )
+                            }
+                        )
+
+                statistics_df = pd.DataFrame(
+                    statistic_rows
+                )
+
+                st.dataframe(
+                    statistics_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                st.divider()
+
+                # -----------------------------------------
+                # FACTORS BY RISK
+                # -----------------------------------------
+
+                st.subheader(
+                    "🔬 Facteurs par niveau de risque"
+                )
+
+                factor_columns = [
+                    "temperature_celsius",
+                    "storage_days",
+                    "ph",
+                    "total_viable_count",
+                    "enterobacteriaceae_count",
+                    "coliform_count",
+                    "staphylococcus_aureus_count"
+                ]
+
+                available_factor_columns = [
+                    column
+                    for column in factor_columns
+                    if column in analytics_data.columns
+                ]
+
+                if (
+                    "expert_risk_label"
+                    in analytics_data.columns
+                    and available_factor_columns
+                ):
+
+                    factor_means = (
+                        analytics_data
+                        .groupby(
+                            "expert_risk_label"
+                        )[
+                            available_factor_columns
+                        ]
+                        .mean()
+                        .reindex(
+                            [
+                                "Faible",
+                                "Modéré",
+                                "Élevé"
+                            ]
+                        )
+                        .round(2)
+                    )
+
+                    st.dataframe(
+                        factor_means,
+                        use_container_width=True
+                    )
+
+                else:
+
+                    st.info(
+                        "Pas assez de données "
+                        "pour cette analyse."
+                    )
+
+                st.divider()
+
+                # -----------------------------------------
+                # CORRELATION ANALYSIS
+                # -----------------------------------------
+
+                st.subheader(
+                    "📈 Analyse exploratoire des corrélations"
+                )
+
+                if (
+                    "risk_numeric"
+                    in analytics_data.columns
+                ):
+
+                    correlation_rows = []
+
+                    for column in available_factor_columns:
+
+                        temporary = analytics_data[
+                            [
+                                column,
+                                "risk_numeric"
+                            ]
+                        ].dropna()
+
+                        if len(temporary) >= 2:
+
+                            correlation = temporary[
+                                column
+                            ].corr(
+                                temporary[
+                                    "risk_numeric"
+                                ]
+                            )
+
+                            if pd.notna(
+                                correlation
+                            ):
+
+                                correlation_rows.append(
+                                    {
+                                        "Variable":
+                                            column,
+
+                                        "Corrélation avec le risque":
+                                            round(
+                                                correlation,
+                                                3
+                                            )
+                                    }
+                                )
+
+                    correlations_df = pd.DataFrame(
+                        correlation_rows
+                    )
+
+                    if not correlations_df.empty:
+
+                        correlations_df[
+                            "Force absolue"
+                        ] = correlations_df[
+                            "Corrélation avec le risque"
+                        ].abs()
+
+                        correlations_df = (
+                            correlations_df
+                            .sort_values(
+                                "Force absolue",
+                                ascending=False
+                            )
+                            .drop(
+                                columns=[
+                                    "Force absolue"
+                                ]
+                            )
+                        )
+
+                        st.dataframe(
+                            correlations_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                        st.info(
+                            """
+                            ⚠️ Une corrélation indique une
+                            association statistique exploratoire.
+                            Elle ne démontre pas une relation
+                            de causalité.
+                            """
+                        )
+
+                    else:
+
+                        st.info(
+                            "Pas assez de données pour "
+                            "calculer les corrélations."
+                        )
+
+                else:
+
+                    st.info(
+                        "Les labels de risque sont nécessaires "
+                        "pour cette analyse."
+                    )
+
+                st.divider()
+
+                # -----------------------------------------
+                # RISK FACTOR VISUALIZATIONS
+                # -----------------------------------------
+
+                st.subheader(
+                    "📊 Évolution des facteurs"
+                )
+
+                if (
+                    "expert_risk_label"
+                    in analytics_data.columns
+                ):
+
+                    chart_columns = [
+                        "temperature_celsius",
+                        "storage_days",
+                        "ph"
+                    ]
+
+                    available_chart_columns = [
+                        column
+                        for column in chart_columns
+                        if column in analytics_data.columns
+                    ]
+
+                    if available_chart_columns:
+
+                        chart_data = analytics_data[
+                            [
+                                "batch_id"
+                            ]
+                            + available_chart_columns
+                        ].copy()
+
+                        chart_data = chart_data.set_index(
+                            "batch_id"
+                        )
+
+                        st.line_chart(
+                            chart_data
+                        )
+
+                st.divider()
+
+                # -----------------------------------------
+                # RESEARCH INTERPRETATION
+                # -----------------------------------------
+
+                st.subheader(
+                    "🧠 Interprétation FOODNEXA"
+                )
+
+                st.write(
+                    """
+                    Cette section constitue une première
+                    analyse exploratoire du Research Dataset.
+
+                    FOODNEXA compare les caractéristiques des
+                    lots selon leur niveau de risque déclaré
+                    et recherche les variables présentant les
+                    associations statistiques les plus importantes
+                    avec le niveau de risque.
+
+                    Cette analyse ne constitue pas encore un
+                    modèle prédictif et ne représente pas une
+                    validation scientifique.
+                    """
+                )
+
+                st.success(
+                    """
+                    🚀 Prochaine étape scientifique :
+                    Feature Engineering → préparation des variables
+                    → séparation Train/Test → Machine Learning
+                    → Validation → Évaluation des performances.
+                    """
+                )
+
+        except Exception as error:
+
+            st.error(
+                "❌ Une erreur est survenue pendant "
+                "l'analyse du Research Dataset."
+            )
+
+            st.code(
+                str(error)
+            )
 
 
 # =====================================================
@@ -1477,12 +1995,14 @@ elif page == "🧬 Research Prototype":
                 "Recommendations",
                 "Research Dataset",
                 "Data Quality Engine",
+                "Research Analytics",
                 "Feature Engineering",
                 "Machine Learning",
                 "Validation"
             ],
 
             "État": [
+                "Disponible",
                 "Disponible",
                 "Disponible",
                 "Disponible",
@@ -1531,6 +2051,7 @@ elif page == "🧬 Research Prototype":
                 "Collecte des données",
                 "Data Quality",
                 "Nettoyage",
+                "Research Analytics",
                 "Feature Engineering",
                 "Séparation Train/Test",
                 "Entraînement ML",
@@ -1543,6 +2064,7 @@ elif page == "🧬 Research Prototype":
                 "En cours",
                 "Disponible",
                 "À développer",
+                "Disponible",
                 "À développer",
                 "À développer",
                 "À développer",
