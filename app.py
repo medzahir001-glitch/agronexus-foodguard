@@ -9,7 +9,11 @@ import os
 
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
-
+from foodnexa_supabase import (
+    get_supabase_client,
+    save_risk_assessment,
+    save_research_observation,
+)
 
 # =====================================================
 # PAGE CONFIGURATION
