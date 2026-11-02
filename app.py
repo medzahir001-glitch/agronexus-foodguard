@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
+import re
 
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
@@ -62,9 +63,31 @@ def save_csv_row(path, row):
 
 
 def show_error(title, error):
-    st.warning(title)
-    # Do not display credentials or secret values in the UI.
-    st.caption(f"Détail technique : {type(error).__name__}")
+    """Display useful Supabase/PostgREST diagnostics without exposing credentials."""
+    st.error(title)
+    st.caption(f"Type d'erreur : {type(error).__name__}")
+
+    # Supabase PostgREST errors expose these fields. Never print request headers,
+    # URLs containing tokens, or Streamlit Secrets.
+    fields = (
+        ("Code", getattr(error, "code", None)),
+        ("Message", getattr(error, "message", None)),
+        ("Détails", getattr(error, "details", None)),
+        ("Indice", getattr(error, "hint", None)),
+    )
+    shown = False
+    for label, value in fields:
+        if value:
+            st.write(f"**{label} :** {value}")
+            shown = True
+
+    if not shown:
+        # Exception text can be useful for local validation errors; redact common
+        # secret formats defensively before showing it.
+        message = str(error)
+        message = re.sub(r"sb_(?:secret|publishable)_[A-Za-z0-9_-]+", "[SECRET MASQUÉ]", message)
+        message = re.sub(r"eyJ[A-Za-z0-9._-]{20,}", "[TOKEN MASQUÉ]", message)
+        st.caption(message[:1200] if message else "Aucun détail supplémentaire disponible.")
 
 
 history = load_csv(CSV_FILE)
@@ -136,7 +159,7 @@ if page == "📊 Dashboard":
             "risk_score", "risk_level", "confidence"
         ] if c in history.columns]
         st.dataframe(history[cols].tail(10).iloc[::-1],
-                     use_container_width=True, hide_index=True)
+                     width="stretch", hide_index=True)
 
 
 # =====================================================
@@ -165,7 +188,7 @@ elif page == "🔬 Nouvelle analyse":
         pasteurized = st.checkbox("Produit pasteurisé", value=True)
 
     if st.button("🚀 LANCER L'ANALYSE FOODNEXA",
-                 use_container_width=True, type="primary"):
+                 width="stretch", type="primary"):
         if not batch_id.strip() or not product_name.strip():
             st.warning("Veuillez saisir le numéro de lot et le nom du produit.")
             st.stop()
@@ -178,8 +201,7 @@ elif page == "🔬 Nouvelle analyse":
                 product_name=product_name.strip(),
             )
         except Exception as error:
-            st.error("Une erreur est survenue pendant l'analyse.")
-            st.caption(type(error).__name__)
+            show_error("Une erreur est survenue pendant l'analyse.", error)
             st.stop()
 
         st.success("✅ Analyse FOODNEXA terminée.")
@@ -205,7 +227,7 @@ elif page == "🔬 Nouvelle analyse":
             "Explication": factor["reason"],
         } for name, factor in report["factors"].items()]
         st.subheader("🔎 Facteurs analysés")
-        st.dataframe(pd.DataFrame(factor_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(factor_data), width="stretch", hide_index=True)
 
         st.subheader("⚠️ Facteurs de risque détectés")
         if report["reasons"]:
@@ -313,7 +335,7 @@ elif page == "🧪 Research Data":
         nonconformity_detected = st.selectbox("Non-conformité", ["Non évaluée", "Non", "Oui"], key="nonconformity_detected")
     expert_risk_label = st.selectbox("Expert Risk Label", ["Non attribué", "Faible", "Modéré", "Élevé"], key="expert_risk_label")
 
-    if st.button("💾 ENREGISTRER L'OBSERVATION", use_container_width=True, type="primary"):
+    if st.button("💾 ENREGISTRER L'OBSERVATION", width="stretch", type="primary"):
         if not research_batch_id.strip():
             st.warning("Veuillez saisir un ID de lot.")
             st.stop()
@@ -379,7 +401,7 @@ elif page == "🧪 Research Data":
     research_view = load_csv(RESEARCH_CSV_FILE, RESEARCH_COLUMNS)
     if not research_view.empty:
         st.metric("Nombre d'observations", len(research_view))
-        st.dataframe(research_view, use_container_width=True, hide_index=True)
+        st.dataframe(research_view, width="stretch", hide_index=True)
         st.divider()
         st.subheader("🔍 FOODNEXA Data Quality Check")
         try:
@@ -400,7 +422,7 @@ elif page == "🧪 Research Data":
             st.subheader("📋 Valeurs manquantes")
             missing = quality.get("missing_values", {})
             if missing:
-                st.dataframe(pd.DataFrame([{"Variable": k, "Valeurs manquantes": v} for k, v in missing.items()]), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame([{"Variable": k, "Valeurs manquantes": v} for k, v in missing.items()]), width="stretch", hide_index=True)
             else:
                 st.success("Aucune valeur manquante détectée.")
             st.subheader("♻️ Doublons")
@@ -422,7 +444,7 @@ elif page == "🧪 Research Data":
             data=research_view.to_csv(index=False).encode("utf-8-sig"),
             file_name="foodnexa_research_dataset.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.info("Ajoutez au moins une observation pour lancer le Data Quality Check.")
@@ -467,7 +489,7 @@ elif page == "📊 Research Analytics":
             dist_df = pd.DataFrame({"Niveau de risque": dist.index, "Nombre": dist.values})
             st.bar_chart(dist_df.set_index("Niveau de risque"))
             dist_df["Pourcentage"] = (dist_df["Nombre"] / total * 100).round(1)
-            st.dataframe(dist_df, use_container_width=True, hide_index=True)
+            st.dataframe(dist_df, width="stretch", hide_index=True)
         st.divider()
         st.subheader("📐 Statistiques descriptives")
         labels = {
@@ -486,13 +508,13 @@ elif page == "📊 Research Analytics":
                     "Médiane": round(data[col].median(), 2),
                     "Minimum": round(data[col].min(), 2), "Maximum": round(data[col].max(), 2),
                 })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
         st.divider()
         st.subheader("🔬 Facteurs par niveau de risque")
         available = [c for c in numeric if c in data.columns]
         if "expert_risk_label" in data and available:
             means = data.groupby("expert_risk_label")[available].mean().reindex(["Faible", "Modéré", "Élevé"]).round(2)
-            st.dataframe(means, use_container_width=True)
+            st.dataframe(means, width="stretch")
         else:
             st.info("Pas assez de données pour cette analyse.")
         st.divider()
@@ -509,7 +531,7 @@ elif page == "📊 Research Analytics":
                 corr_df = pd.DataFrame(corr_rows)
                 corr_df["abs"] = corr_df["Corrélation avec le risque"].abs()
                 st.dataframe(corr_df.sort_values("abs", ascending=False).drop(columns="abs"),
-                             use_container_width=True, hide_index=True)
+                             width="stretch", hide_index=True)
                 st.info("Une corrélation indique une association statistique, pas une causalité.")
             else:
                 st.info("Pas assez de données pour calculer les corrélations.")
@@ -540,13 +562,13 @@ elif page == "📁 Historique":
         st.info("Aucune analyse enregistrée.")
     else:
         st.write(f"Nombre total d'analyses : **{len(history)}**")
-        st.dataframe(history, use_container_width=True, hide_index=True)
+        st.dataframe(history, width="stretch", hide_index=True)
         st.download_button(
             "⬇️ Télécharger le dataset CSV",
             data=history.to_csv(index=False).encode("utf-8-sig"),
             file_name="foodnexa_assessments.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -556,6 +578,15 @@ elif page == "📁 Historique":
 
 elif page == "🧬 Research Prototype":
     st.title("🧬 FOODNEXA Research Prototype")
+    with st.expander("☁️ Diagnostic de connexion Supabase"):
+        if st.button("Tester la connexion Supabase", key="test_supabase_connection"):
+            try:
+                from foodnexa_supabase import test_supabase_connection
+                test_result = test_supabase_connection()
+                st.success("Connexion Supabase établie. La table lots est accessible.")
+                st.caption(f"Lignes retournées : {test_result['rows_returned']}")
+            except Exception as error:
+                show_error("Le test de connexion Supabase a échoué.", error)
     st.info("""
     FOODNEXA est actuellement un prototype expérimental basé sur des règles explicables.
     L'objectif est de construire progressivement une base de données structurée pour étudier
@@ -573,7 +604,7 @@ elif page == "🧬 Research Prototype":
             "Disponible", "Disponible", "Disponible", "À développer", "À développer", "À développer",
         ],
     })
-    st.dataframe(architecture, use_container_width=True, hide_index=True)
+    st.dataframe(architecture, width="stretch", hide_index=True)
     st.subheader("🎯 Objectif scientifique")
     st.write("""
     Construire un dataset de lots alimentaires contenant des variables de procédé, de stockage,
@@ -591,7 +622,7 @@ elif page == "🧬 Research Prototype":
             "À développer", "À développer", "À développer", "À développer", "À développer",
         ],
     })
-    st.dataframe(pipeline, use_container_width=True, hide_index=True)
+    st.dataframe(pipeline, width="stretch", hide_index=True)
     st.warning("Les résultats actuels sont expérimentaux. Ils ne remplacent pas les analyses de laboratoire ni les exigences réglementaires.")
 
 
