@@ -178,7 +178,12 @@ def save_research_observation(observation: dict) -> dict:
         "cold_chain_broken", "hygiene_controlled", "pasteurized",
         "total_viable_count", "enterobacteriaceae_count", "coliform_count",
         "staphylococcus_aureus_count", "salmonella_detected", "sensory_status",
-        "nonconformity_detected", "expert_risk_label",
+        "nonconformity_detected", "expert_risk_label", "product_category",
+        "sample_reference", "supplier", "sampling_date", "analysis_date",
+        "laboratory", "analyst", "process_data", "physicochemical_results",
+        "microbiological_results", "contaminant_results", "sensory_results",
+        "packaging_results", "analysis_units", "analysis_methods",
+        "applicable_limits_reference", "notes",
     }
     payload = {key: value for key, value in observation.items() if key in allowed_fields}
 
