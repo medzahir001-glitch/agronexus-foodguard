@@ -46,6 +46,69 @@ NUMERIC_RANGES = {
     "net_weight": (0, None), "vacuum_level": (0, None), "brix": (0, 100),
 }
 
+
+# Product-aware analytical priorities. These are research guidance profiles,
+# not universal legal requirements or release specifications.
+PRODUCT_PROFILES = {
+    "Produits laitiers": {
+        "name": "Profil produits laitiers",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Processus", "Sensoriel", "Emballage"],
+        "priority_fields": ["ph", "temperature_celsius", "storage_days", "total_viable_count",
+                            "enterobacteriaceae_count", "coliform_count", "staphylococcus_aureus_count",
+                            "listeria_monocytogenes_count", "salmonella_detected",
+                            "processing_temperature_celsius", "processing_time_minutes",
+                            "cooling_temperature_celsius", "cooling_time_minutes", "sensory_status"],
+        "note": "Priorités indicatives : qualité physico-chimique, maîtrise thermique, microbiologie et chaîne du froid.",
+    },
+    "Produits végétaux": {
+        "name": "Profil produits végétaux",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Sensoriel", "Emballage"],
+        "priority_fields": ["ph", "humidity_percent", "dry_matter_percent", "total_viable_count",
+                            "e_coli_count", "yeast_mould_count", "salmonella_detected",
+                            "pesticide_residue", "lead", "cadmium", "processing_temperature_celsius", "sensory_status"],
+        "note": "Priorités indicatives : hygiène, humidité, contaminants pertinents, traitement et conservation.",
+    },
+    "Céréales et farines": {
+        "name": "Profil céréales et farines",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Sensoriel", "Emballage"],
+        "priority_fields": ["humidity_percent", "moisture_percent", "dry_matter_percent", "ash_percent",
+                            "protein_percent", "total_viable_count", "yeast_mould_count",
+                            "bacillus_cereus_count", "aflatoxin", "mycotoxin", "pesticide_residue", "sensory_status"],
+        "note": "Priorités indicatives : humidité, composition, flore, mycotoxines et conditions de stockage.",
+    },
+    "Viandes et volailles": {
+        "name": "Profil viandes et volailles",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Processus", "Sensoriel", "Emballage"],
+        "priority_fields": ["temperature_celsius", "storage_days", "ph", "total_viable_count",
+                            "e_coli_count", "salmonella_detected", "listeria_monocytogenes_count",
+                            "staphylococcus_aureus_count", "cold_chain_broken", "sensory_status", "seal_integrity_score"],
+        "note": "Priorités indicatives : température/temps, chaîne du froid, indicateurs microbiologiques et emballage.",
+    },
+    "Poissons et produits de la mer": {
+        "name": "Profil produits de la mer",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Sensoriel", "Emballage"],
+        "priority_fields": ["temperature_celsius", "storage_days", "ph", "total_viable_count",
+                            "e_coli_count", "salmonella_detected", "lead", "cadmium", "mercury",
+                            "arsenic", "sensory_status", "seal_integrity_score"],
+        "note": "Priorités indicatives : fraîcheur, température, microbiologie, contaminants pertinents et intégrité de l'emballage.",
+    },
+    "Boissons": {
+        "name": "Profil boissons",
+        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Emballage"],
+        "priority_fields": ["ph", "brix", "acidity", "total_viable_count", "yeast_mould_count",
+                            "e_coli_count", "processing_temperature_celsius", "processing_time_minutes",
+                            "seal_integrity_score", "net_weight"],
+        "note": "Priorités indicatives : pH, °Brix selon formulation, stabilité microbiologique et maîtrise du procédé.",
+    },
+    "Huiles et matières grasses": {
+        "name": "Profil huiles et matières grasses",
+        "priority_domains": ["Physico-chimique", "Contaminants", "Sensoriel", "Emballage"],
+        "priority_fields": ["acidity", "peroxide_value", "fat_percent", "lead", "cadmium",
+                            "arsenic", "pesticide_residue", "sensory_status", "net_weight", "seal_integrity_score"],
+        "note": "Priorités indicatives : paramètres d'oxydation et d'acidité, contaminants et protection de l'emballage.",
+    },
+}
+
 MISSING_TEXT = {"", "nan", "none", "null", "na", "n/a", "non renseigné", "non renseigne",
                 "non analysé", "non analysée", "non analyse", "non analysee",
                 "non évalué", "non evalué", "non évaluée", "non evaluee"}
@@ -147,6 +210,33 @@ def _duplicate_metrics(df):
     return exact, sample_duplicates
 
 
+def _product_profile_report(data):
+    if "product_category" not in data.columns:
+        return {"profiles": [], "message": "Catégorie du produit absente : profil spécifique non calculé."}
+    profiles = []
+    categories = data["product_category"].dropna().astype(str).str.strip()
+    for category in sorted(value for value in categories.unique() if value):
+        config = PRODUCT_PROFILES.get(category)
+        subset = data[data["product_category"].astype(str).str.strip() == category]
+        if not config:
+            profiles.append({"category": category, "profile": "Profil général",
+                             "observations": len(subset), "priority_fields": [],
+                             "measured_priority_fields": [], "coverage_percent": None,
+                             "priority_domains": list(ANALYSIS_GROUPS),
+                             "note": "Catégorie non spécialisée : interprétation générale, à adapter au produit exact."})
+            continue
+        fields = [field for field in config["priority_fields"] if field in subset.columns]
+        possible = len(subset) * len(fields)
+        available = sum(int(subset[field].map(_present).sum()) for field in fields)
+        profiles.append({"category": category, "profile": config["name"],
+                         "observations": len(subset), "priority_fields": fields,
+                         "measured_priority_fields": [field for field in fields if subset[field].map(_present).any()],
+                         "coverage_percent": round(available / possible * 100, 1) if possible else None,
+                         "priority_domains": config["priority_domains"], "note": config["note"]})
+    return {"profiles": profiles,
+            "message": "Les champs prioritaires sont des orientations de recherche. Un champ absent ou non mesuré n'est pas considéré comme non conforme."}
+
+
 def generate_quality_report(df):
     """Return a backward-compatible, explainable data-quality report."""
     data = df.copy() if isinstance(df, pd.DataFrame) else pd.DataFrame(df or [])
@@ -155,7 +245,7 @@ def generate_quality_report(df):
         return {"rows": rows, "columns": columns, "quality_score": 0.0, "duplicates": 0,
                 "coverage": {}, "issues": [], "issue_count": 0, "score_components": {},
                 "validation_status": "Aucune donnée", "validation_errors": 0,
-                "validation_warnings": 0, "sample_reference_duplicates": 0,
+                "validation_warnings": 0, "sample_reference_duplicates": 0, "product_profiles": {"profiles": [], "message": "Aucune donnée."},
                 "message": "Aucune observation à évaluer.",
                 "interpretation": "Score de qualité documentaire et technique uniquement; pas un score de sécurité sanitaire."}
 
@@ -174,6 +264,7 @@ def generate_quality_report(df):
     _validate_categories(data, issues)
     _validate_logic(data, issues)
     exact_duplicates, sample_duplicates = _duplicate_metrics(data)
+    product_profiles = _product_profile_report(data)
     if exact_duplicates:
         _add_issue(issues, "—", "Enregistrement", f"{exact_duplicates} doublon(s) exact(s) détecté(s)", "À vérifier")
     if sample_duplicates:
@@ -200,6 +291,7 @@ def generate_quality_report(df):
             "Cohérence technique (10%)": round(coherence, 1),
         },
         "issues": issues, "issue_count": len(issues),
+        "product_profiles": product_profiles,
         "validation_status": status, "validation_errors": error_count,
         "validation_warnings": warning_count,
         "message": "Les analyses non renseignées restent non testées; elles ne sont jamais considérées comme zéro ou conformes.",
