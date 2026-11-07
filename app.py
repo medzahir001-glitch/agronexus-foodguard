@@ -60,9 +60,27 @@ h1, h2, h3 {
     color: var(--foodnexa-navy) !important;
     font-weight: 800 !important;
 }
-h1 { font-size: 1.8rem !important; }
-h2 { font-size: 1.4rem !important; }
-h3 { font-size: 1.12rem !important; }
+h1 { font-size: 1.85rem !important; }
+h2 { font-size: 1.42rem !important; color: #087E9B !important; }
+h3 { font-size: 1.13rem !important; color: #16856B !important; }
+.foodnexa-brand-title {
+    text-align: center;
+    color: #087E9B !important;
+    font-size: clamp(2.8rem, 6vw, 4.7rem);
+    line-height: 1.05;
+    font-weight: 900;
+    letter-spacing: 3px;
+    margin: 5px 0 0;
+    text-shadow: 0 3px 12px rgba(8,126,155,.14);
+}
+.foodnexa-brand-subtitle {
+    text-align: center;
+    color: #17324D !important;
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 2.2px;
+    margin: 7px 0 18px;
+}
 
 .foodnexa-tagline {
     text-align: center;
@@ -87,14 +105,14 @@ h3 { font-size: 1.12rem !important; }
     padding: 15px;
 }
 
-/* DARK METRIC CARDS: force every label/value/delta to white */
+/* High-contrast colored metric cards */
 div[data-testid="stMetric"] {
-    background: #102B46 !important;
+    background: linear-gradient(135deg, #087E9B, #075B75) !important;
     border: 1px solid #087E9B !important;
-    border-left: 4px solid #16A078 !important;
-    border-radius: 12px !important;
+    border-left: 5px solid #16A078 !important;
+    border-radius: 13px !important;
     padding: 14px 16px !important;
-    box-shadow: 0 3px 10px rgba(16, 43, 70, 0.12) !important;
+    box-shadow: 0 4px 13px rgba(16, 43, 70, 0.13) !important;
 }
 div[data-testid="stMetric"] * {
     color: #FFFFFF !important;
@@ -174,6 +192,8 @@ div[data-testid="stAlert"] p {
     }
     h1 { font-size: 1.45rem !important; }
     h2 { font-size: 1.2rem !important; }
+    .foodnexa-brand-title { font-size: 2.8rem; letter-spacing: 2px; }
+    .foodnexa-brand-subtitle { font-size: 0.72rem; letter-spacing: 1.2px; }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         font-size: 1.2rem !important;
     }
@@ -230,12 +250,13 @@ history = load_csv(CSV_FILE)
 research_data = load_csv(RESEARCH_CSV_FILE, RESEARCH_COLUMNS)
 
 if os.path.exists(LOGO_FILE):
-    st.image(LOGO_FILE, width=700)
-else:
-    st.markdown("# 🛡️ FOODNEXA")
+    logo_left, logo_center, logo_right = st.columns([1, 1, 1])
+    with logo_center:
+        st.image(LOGO_FILE, width=170)
 
+st.markdown('<div class="foodnexa-brand-title">FOODNEXA</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="foodnexa-tagline">INTELLIGENT FOOD SAFETY RISK ASSESSMENT</div>',
+    '<div class="foodnexa-brand-subtitle">FOOD SAFETY • RISK INTELLIGENCE</div>',
     unsafe_allow_html=True,
 )
 st.markdown('<div class="foodnexa-line"></div>', unsafe_allow_html=True)
