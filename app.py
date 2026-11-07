@@ -736,6 +736,29 @@ elif page == "🧪 Research Data":
             st.caption(quality.get("interpretation", "Score documentaire uniquement."))
             st.info(quality.get("message", "Les champs non renseignés ne sont pas considérés comme des résultats négatifs."))
 
+            # Product-specific analytical priorities (research guidance, not legal limits).
+            profile_report = quality.get("product_profiles", {})
+            st.subheader("🧩 Product-Specific Validation Profiles")
+            st.caption(profile_report.get("message", "Les priorités dépendent de la catégorie du produit."))
+            profile_rows = []
+            for profile in profile_report.get("profiles", []):
+                profile_rows.append({
+                    "Catégorie": profile.get("category", "—"),
+                    "Profil": profile.get("profile", "Profil général"),
+                    "Observations": profile.get("observations", 0),
+                    "Couverture des champs prioritaires (%)": profile.get("coverage_percent", "N/D"),
+                    "Champs prioritaires présents": ", ".join(profile.get("measured_priority_fields", [])) or "Aucun résultat renseigné",
+                    "Domaines prioritaires": ", ".join(profile.get("priority_domains", [])),
+                })
+            if profile_rows:
+                st.dataframe(pd.DataFrame(profile_rows), width="stretch", hide_index=True)
+                for profile in profile_report.get("profiles", []):
+                    with st.expander(f"Détails — {profile.get('category', 'Catégorie')}"):
+                        st.write(profile.get("note", "Profil indicatif."))
+                        st.caption("Champs prioritaires identifiés : " + (", ".join(profile.get("priority_fields", [])) or "Aucun champ spécifique reconnu dans le CSV."))
+            else:
+                st.caption("Ajoutez une catégorie de produit pour activer les profils spécialisés.")
+
             components = quality.get("score_components", {})
             if components:
                 st.markdown("**Composition du score**")
