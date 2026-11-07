@@ -1,8 +1,8 @@
 
 import os
+import re
 import streamlit as st
 import pandas as pd
-import re
 
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
@@ -35,92 +35,138 @@ RESEARCH_COLUMNS = [
 ]
 
 # =====================================================
-# FOODNEXA COMPACT PROFESSIONAL DESIGN
+# FOODNEXA PROFESSIONAL UI V2
 # =====================================================
 
 st.markdown("""
 <style>
 
-/* Main layout */
+/* ===== BRAND COLORS =====
+   Navy:      #102B46
+   Turquoise: #087E9B
+   Emerald:   #16A078
+   Background:#F3F6FA
+========================= */
+
+:root {
+    --fn-navy: #102B46;
+    --fn-blue: #087E9B;
+    --fn-green: #16A078;
+    --fn-bg: #F3F6FA;
+    --fn-text: #243B53;
+    --fn-muted: #64748B;
+    --fn-border: #DCE5ED;
+}
+
+/* Main page */
+.stApp {
+    background: #F3F6FA;
+    color: #243B53;
+}
+
 .block-container {
-    max-width: 1450px;
-    padding-top: 0.8rem !important;
-    padding-bottom: 1.2rem !important;
+    max-width: 1500px;
+    padding-top: 1.1rem !important;
+    padding-bottom: 1.5rem !important;
     padding-left: 2rem !important;
     padding-right: 2rem !important;
 }
 
-/* Global typography */
+/* Typography */
 html, body, [class*="css"] {
     font-size: 13px !important;
+    color: #243B53;
 }
 
-p, label, li, .stMarkdown,
+p, li, label,
 [data-testid="stMarkdownContainer"] {
+    color: #334155;
     font-size: 0.88rem !important;
-    line-height: 1.5 !important;
+    line-height: 1.55 !important;
 }
 
-/* Headings */
+/* Main titles */
 h1 {
-    font-size: 1.65rem !important;
-    font-weight: 750 !important;
+    color: #102B46 !important;
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.4px;
     line-height: 1.3 !important;
-    color: #0B2A4A !important;
+    padding-bottom: 5px;
 }
 
 h2 {
-    font-size: 1.3rem !important;
-    font-weight: 700 !important;
-    line-height: 1.35 !important;
+    color: #102B46 !important;
+    font-size: 1.35rem !important;
+    font-weight: 750 !important;
 }
 
 h3 {
+    color: #087E9B !important;
     font-size: 1.05rem !important;
-    font-weight: 650 !important;
-    line-height: 1.4 !important;
+    font-weight: 700 !important;
 }
 
 /* Sidebar */
 [data-testid="stSidebar"] {
-    min-width: 225px;
-    max-width: 225px;
+    background: #102B46;
+    min-width: 245px;
+    max-width: 245px;
 }
 
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    font-size: 1.05rem !important;
+[data-testid="stSidebar"] * {
+    color: #F8FAFC !important;
 }
 
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label {
-    font-size: 0.82rem !important;
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    padding: 5px 0;
 }
 
-[data-testid="stRadio"] label {
-    font-size: 0.84rem !important;
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+    color: #B8CBD9 !important;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: #36536D !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stAlert"] {
+    background: #1C3D59;
+    border: 1px solid #41627C;
 }
 
 /* Metrics */
 [data-testid="stMetric"] {
-    padding: 8px 11px !important;
-    background: #F7FAFC;
-    border: 1px solid #E5EDF3;
-    border-radius: 8px;
+    background: #FFFFFF;
+    border: 1px solid #DCE5ED;
+    border-left: 4px solid #087E9B;
+    border-radius: 10px;
+    padding: 13px 15px !important;
+    box-shadow: 0 2px 7px rgba(16, 43, 70, 0.04);
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: 0.76rem !important;
+    color: #64748B !important;
+    font-size: 0.78rem !important;
+    font-weight: 650 !important;
 }
 
 [data-testid="stMetricValue"] {
-    font-size: 1.4rem !important;
-    font-weight: 750 !important;
+    color: #102B46 !important;
+    font-size: 1.55rem !important;
+    font-weight: 800 !important;
 }
 
 [data-testid="stMetricDelta"] {
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
+}
+
+/* Section headings */
+[data-testid="stVerticalBlock"] h2,
+[data-testid="stVerticalBlock"] h3 {
+    margin-top: 0.25rem;
 }
 
 /* Inputs */
@@ -130,8 +176,9 @@ h3 {
 .stDateInput label,
 .stTextArea label,
 .stCheckbox label {
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
+    color: #243B53 !important;
+    font-size: 0.83rem !important;
+    font-weight: 650 !important;
 }
 
 .stTextInput input,
@@ -139,80 +186,99 @@ h3 {
 .stSelectbox div,
 .stDateInput input,
 .stTextArea textarea {
-    font-size: 0.85rem !important;
+    font-size: 0.86rem !important;
+    border-radius: 7px !important;
 }
 
 /* Buttons */
 .stButton button,
 .stFormSubmitButton button,
 .stDownloadButton button {
-    font-size: 0.83rem !important;
-    min-height: 35px !important;
-    padding: 6px 12px !important;
-    border-radius: 7px !important;
-    font-weight: 600 !important;
+    border-radius: 8px !important;
+    min-height: 37px !important;
+    font-size: 0.84rem !important;
+    font-weight: 700 !important;
+    padding: 7px 14px !important;
+    transition: all 0.2s ease;
 }
 
-/* Data tables */
+.stButton button[kind="primary"],
+.stFormSubmitButton button[kind="primary"] {
+    background: #087E9B !important;
+    border: 1px solid #087E9B !important;
+    color: white !important;
+}
+
+.stButton button[kind="primary"]:hover,
+.stFormSubmitButton button[kind="primary"]:hover {
+    background: #102B46 !important;
+    border-color: #102B46 !important;
+}
+
+/* DataFrames */
 [data-testid="stDataFrame"] {
-    font-size: 0.80rem !important;
+    border: 1px solid #DCE5ED;
+    border-radius: 9px;
+    overflow: hidden;
 }
 
-[data-testid="stDataFrame"] * {
-    font-size: 0.80rem !important;
-}
-
-/* Expanders and tabs */
-[data-testid="stExpander"] summary {
-    font-size: 0.85rem !important;
-}
-
+/* Tabs */
 .stTabs [data-baseweb="tab"] {
-    font-size: 0.83rem !important;
-    padding: 7px 12px !important;
+    font-size: 0.85rem !important;
+    font-weight: 650 !important;
+    padding: 9px 14px !important;
+}
+
+/* Expanders */
+[data-testid="stExpander"] {
+    border: 1px solid #DCE5ED;
+    border-radius: 9px;
+    background: #FFFFFF;
+}
+
+[data-testid="stExpander"] summary {
+    font-weight: 650 !important;
+    color: #102B46 !important;
 }
 
 /* Alerts */
 [data-testid="stAlert"] {
-    padding: 9px 12px !important;
-    border-radius: 8px !important;
+    border-radius: 9px !important;
+    padding: 10px 13px !important;
 }
 
 [data-testid="stAlert"] p {
-    font-size: 0.83rem !important;
+    font-size: 0.84rem !important;
 }
 
-/* Compact spacing */
-div[data-testid="stVerticalBlock"] {
-    gap: 0.7rem;
-}
-
+/* Dividers */
 hr {
-    margin-top: 0.7rem !important;
-    margin-bottom: 0.7rem !important;
+    border-color: #DCE5ED !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
 }
 
 /* Branding */
 .foodnexa-tagline {
     text-align: center;
-    color: #20A36A;
+    color: #087E9B;
     font-size: 12px !important;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin: 5px 0 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    margin: 5px 0 13px;
 }
 
 .foodnexa-line {
-    height: 3px;
+    height: 4px;
     width: 100%;
     background: linear-gradient(
         90deg,
-        #0B2A4A,
-        #00A6C7,
-        #20A36A
+        #102B46 0%,
+        #087E9B 55%,
+        #16A078 100%
     );
     border-radius: 10px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 /* Footer */
@@ -220,11 +286,12 @@ hr {
     text-align: center;
     color: #64748B;
     font-size: 10px !important;
-    line-height: 1.6;
-    padding: 10px;
+    line-height: 1.7;
+    padding: 14px;
+    border-top: 1px solid #DCE5ED;
 }
 
-/* Responsive design */
+/* Responsive */
 @media (max-width: 768px) {
     .block-container {
         padding-left: 0.8rem !important;
@@ -240,7 +307,7 @@ hr {
     }
 
     [data-testid="stMetricValue"] {
-        font-size: 1.1rem !important;
+        font-size: 1.15rem !important;
     }
 }
 
@@ -277,6 +344,70 @@ def save_csv_row(path, row):
     )
 
     return updated
+
+
+def style_table(df):
+    """Professional table styling using Pandas Styler."""
+
+    if df is None or df.empty:
+        return df
+
+    return (
+        df.style
+        .set_table_styles([
+            {
+                "selector": "thead th",
+                "props": [
+                    ("background-color", "#102B46"),
+                    ("color", "#FFFFFF"),
+                    ("font-weight", "bold"),
+                    ("font-size", "12px"),
+                    ("text-align", "left"),
+                    ("padding", "10px"),
+                    ("border", "1px solid #294B68"),
+                ],
+            },
+            {
+                "selector": "tbody td",
+                "props": [
+                    ("color", "#243B53"),
+                    ("font-size", "12px"),
+                    ("padding", "8px"),
+                    ("border-bottom", "1px solid #E2E8F0"),
+                ],
+            },
+            {
+                "selector": "tbody tr:nth-child(even)",
+                "props": [
+                    ("background-color", "#F1F6FA"),
+                ],
+            },
+            {
+                "selector": "tbody tr:nth-child(odd)",
+                "props": [
+                    ("background-color", "#FFFFFF"),
+                ],
+            },
+        ])
+        .set_properties(**{
+            "text-align": "left",
+            "white-space": "normal",
+        })
+    )
+
+
+def show_table(df, hide_index=True):
+    """Display a consistently styled dataframe."""
+
+    if df is None or df.empty:
+        st.info("Aucune donnée disponible.")
+        return
+
+    st.dataframe(
+        style_table(df),
+        use_container_width=True,
+        hide_index=hide_index,
+    )
 
 
 def show_error(title, error):
@@ -321,6 +452,25 @@ def show_error(title, error):
         )
 
 
+def section_title(number, title):
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(90deg, #102B46, #087E9B);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin: 8px 0 12px 0;
+            font-size: 15px;
+            font-weight: 750;
+        ">
+            {number}. {title}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # =====================================================
 # INITIAL DATA
 # =====================================================
@@ -344,7 +494,7 @@ else:
 
 st.markdown(
     '<div class="foodnexa-tagline">'
-    'INTELLIGENT FOOD SAFETY RISK ASSESSMENT'
+    'FOOD SAFETY / RISK INTELLIGENCE'
     '</div>',
     unsafe_allow_html=True,
 )
@@ -368,7 +518,7 @@ with st.sidebar:
     st.divider()
 
     page = st.radio(
-        "Navigation",
+        "NAVIGATION",
         [
             "📊 Dashboard",
             "🔬 Nouvelle analyse",
@@ -382,7 +532,7 @@ with st.sidebar:
     st.divider()
 
     st.info(
-        "Current research case:\n\n"
+        "CURRENT RESEARCH CASE\n\n"
         "🥛 Lait pasteurisé"
     )
 
@@ -507,10 +657,8 @@ if page == "📊 Dashboard":
             if c in history.columns
         ]
 
-        st.dataframe(
-            history[cols].tail(10).iloc[::-1],
-            width="stretch",
-            hide_index=True
+        show_table(
+            history[cols].tail(10).iloc[::-1]
         )
 
 
@@ -530,7 +678,7 @@ elif page == "🔬 Nouvelle analyse":
 
     with col1:
 
-        st.subheader("📦 Identification")
+        section_title("1", "Identification du lot")
 
         batch_id = st.text_input(
             "Numéro de lot",
@@ -542,7 +690,7 @@ elif page == "🔬 Nouvelle analyse":
             value="Lait pasteurisé"
         )
 
-        st.subheader("🌡️ Conditions de stockage")
+        section_title("2", "Conditions de stockage")
 
         temperature = st.number_input(
             "Température de stockage (°C)",
@@ -562,7 +710,7 @@ elif page == "🔬 Nouvelle analyse":
 
     with col2:
 
-        st.subheader("🧪 Paramètres qualité")
+        section_title("3", "Paramètres qualité")
 
         ph = st.number_input(
             "Valeur pH",
@@ -572,7 +720,7 @@ elif page == "🔬 Nouvelle analyse":
             step=0.1
         )
 
-        st.subheader("🧼 Contrôles")
+        section_title("4", "Contrôles opérationnels")
 
         cold_chain_broken = st.checkbox(
             "Interruption de la chaîne du froid"
@@ -590,7 +738,7 @@ elif page == "🔬 Nouvelle analyse":
 
     if st.button(
         "🚀 LANCER L'ANALYSE FOODNEXA",
-        width="stretch",
+        use_container_width=True,
         type="primary"
     ):
 
@@ -676,11 +824,7 @@ elif page == "🔬 Nouvelle analyse":
 
         st.subheader("🔎 Facteurs analysés")
 
-        st.dataframe(
-            pd.DataFrame(factor_data),
-            width="stretch",
-            hide_index=True
-        )
+        show_table(pd.DataFrame(factor_data))
 
         st.subheader("⚠️ Facteurs de risque détectés")
 
@@ -840,7 +984,7 @@ elif page == "🧪 Research Data":
         clear_on_submit=False
     ):
 
-        st.subheader("1. Identification et traçabilité de l'échantillon")
+        section_title("1", "Identification et traçabilité de l'échantillon")
 
         id1, id2, id3 = st.columns(3)
 
@@ -896,7 +1040,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("2. Paramètres physico-chimiques")
+        section_title("2", "Paramètres physico-chimiques")
 
         pcols = st.columns(4)
 
@@ -931,7 +1075,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("3. Analyses microbiologiques")
+        section_title("3", "Analyses microbiologiques")
 
         mcols = st.columns(4)
 
@@ -970,7 +1114,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("4. Contaminants chimiques")
+        section_title("4", "Contaminants chimiques")
 
         ccols = st.columns(4)
 
@@ -998,7 +1142,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("5. Procédé et chaîne du froid")
+        section_title("5", "Procédé et chaîne du froid")
 
         prcols = st.columns(4)
 
@@ -1045,7 +1189,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("6. Contrôle sensoriel et emballage")
+        section_title("6", "Contrôle sensoriel et emballage")
 
         s1, s2, s3 = st.columns(3)
 
@@ -1087,7 +1231,7 @@ elif page == "🧪 Research Data":
 
         st.divider()
 
-        st.subheader("7. Méthodes, unités et référence réglementaire")
+        section_title("7", "Méthodes, unités et référence réglementaire")
 
         a1, a2, a3 = st.columns(3)
 
@@ -1328,11 +1472,7 @@ elif page == "🧪 Research Data":
             len(research_view)
         )
 
-        st.dataframe(
-            research_view,
-            width="stretch",
-            hide_index=True
-        )
+        show_table(research_view)
 
         st.download_button(
             "⬇️ Télécharger Research Dataset (CSV)",
@@ -1614,10 +1754,7 @@ elif page == "📊 Research Analytics":
                 .round(3)
             )
 
-            st.dataframe(
-                stats,
-                use_container_width=True
-            )
+            show_table(stats)
 
         else:
 
@@ -1651,11 +1788,7 @@ elif page == "📊 Research Analytics":
             "Complétude (%)"
         )
 
-        st.dataframe(
-            missing_df,
-            use_container_width=True,
-            hide_index=True
-        )
+        show_table(missing_df)
 
         st.info(
             "Un taux de complétude élevé ne prouve ni la conformité "
@@ -1683,11 +1816,7 @@ elif page == "📁 Historique":
             f"Nombre total d'analyses : **{len(history)}**"
         )
 
-        st.dataframe(
-            history,
-            width="stretch",
-            hide_index=True
-        )
+        show_table(history)
 
         st.download_button(
             "⬇️ Télécharger le dataset CSV",
@@ -1696,7 +1825,7 @@ elif page == "📁 Historique":
             ).encode("utf-8-sig"),
             file_name="foodnexa_assessments.csv",
             mime="text/csv",
-            width="stretch",
+            use_container_width=True,
         )
 
 
@@ -1774,11 +1903,7 @@ elif page == "🧬 Research Prototype":
         ],
     })
 
-    st.dataframe(
-        architecture,
-        width="stretch",
-        hide_index=True
-    )
+    show_table(architecture)
 
     st.subheader("🎯 Objectif scientifique")
 
@@ -1817,11 +1942,7 @@ elif page == "🧬 Research Prototype":
         ],
     })
 
-    st.dataframe(
-        pipeline,
-        width="stretch",
-        hide_index=True
-    )
+    show_table(pipeline)
 
     st.warning(
         "Les résultats actuels sont expérimentaux. "
@@ -1839,7 +1960,7 @@ st.divider()
 st.markdown("""
 <div class="footer-text">
 
-<b>FOODNEXA</b> — FOOD SAFETY / RISK INTELLIGENCE<br>
+<b style="color:#102B46;">FOODNEXA</b> — FOOD SAFETY / RISK INTELLIGENCE<br>
 
 Intelligent Food Safety Risk Assessment<br><br>
 
