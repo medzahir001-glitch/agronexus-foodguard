@@ -39,8 +39,17 @@ st.markdown("""
     --foodnexa-navy: #102B46;
     --foodnexa-blue: #087E9B;
     --foodnexa-green: #16A078;
-    --foodnexa-light: #F1F5F9;
+    --foodnexa-light: #FFFFFF;
     --foodnexa-white: #FFFFFF;
+}
+
+/* Pure white application background */
+html, body, [data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+.main, .block-container {
+    background-color: #FFFFFF !important;
 }
 
 .block-container {
