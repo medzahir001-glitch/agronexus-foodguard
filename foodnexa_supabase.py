@@ -197,10 +197,13 @@ def save_research_observation(observation: dict) -> dict:
         elif not isinstance(payload[field], dict):
             raise TypeError(f"{field} must be a dictionary (JSON object).")
 
+    # Insert each sampling/analysis event as a distinct observation. The
+    # verified column list does not establish a UNIQUE constraint on batch_id,
+    # and one batch may legitimately have multiple samples or analysis dates.
     result = (
         get_supabase_client()
         .table("research_observations")
-        .upsert(payload, on_conflict="batch_id")
+        .insert(payload)
         .execute()
     )
 
@@ -316,3 +319,15 @@ def get_traceability_events(
         .execute()
     )
     return result.data or []
+
+
+def test_supabase_connection() -> dict:
+    """Read-only connectivity check against the lots table."""
+    result = (
+        get_supabase_client()
+        .table("lots")
+        .select("id")
+        .limit(1)
+        .execute()
+    )
+    return {"connected": True, "rows_returned": len(result.data or [])}
