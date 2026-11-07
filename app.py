@@ -5,11 +5,9 @@ import re
 
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
-from foodnexa_research_analytics import generate_research_analytics, prepare_research_data
 from foodnexa_supabase import (
     save_risk_assessment,
     save_research_observation,
-    get_research_observations,
 )
 
 # =====================================================
@@ -64,54 +62,6 @@ def save_csv_row(path, row):
     return updated
 
 
-def flatten_research_for_analytics(frame):
-    """Expand V2 JSONB/CSV domains into the flat columns used by analytics V2."""
-    import json
-
-    data = frame.copy() if isinstance(frame, pd.DataFrame) else pd.DataFrame(frame)
-    nested_maps = {
-        "physicochemical_results": {},
-        "microbiological_results": {
-            "escherichia_coli_count": "e_coli_count",
-            "yeasts_moulds_count": "yeast_mould_count",
-            "listeria_count": "listeria_monocytogenes_count",
-        },
-        "contaminant_results": {},
-        "process_data": {
-            "process_temperature_celsius": "processing_temperature_celsius",
-            "process_time_minutes": "processing_time_minutes",
-        },
-        "packaging_results": {"net_weight_g": "net_weight"},
-    }
-    for source, renames in nested_maps.items():
-        if source not in data.columns:
-            continue
-        expanded = []
-        for raw in data[source]:
-            if isinstance(raw, dict):
-                obj = raw
-            elif isinstance(raw, str) and raw.strip():
-                try:
-                    obj = json.loads(raw)
-                except (ValueError, TypeError):
-                    obj = {}
-            else:
-                obj = {}
-            if not isinstance(obj, dict):
-                obj = {}
-            expanded.append({renames.get(k, k): v for k, v in obj.items()})
-        for key in sorted({k for obj in expanded for k in obj}):
-            if key not in data.columns:
-                data[key] = [obj.get(key) for obj in expanded]
-            else:
-                data[key] = data[key].where(data[key].notna(), [obj.get(key) for obj in expanded])
-    if "product_category" not in data.columns:
-        data["product_category"] = "Non renseignée"
-    else:
-        data["product_category"] = data["product_category"].fillna("Non renseignée")
-    return data
-
-
 def show_error(title, error):
     """Display useful Supabase/PostgREST diagnostics without exposing credentials."""
     st.error(title)
@@ -164,7 +114,7 @@ with st.sidebar:
     ])
     st.divider()
     st.info("Current research case:\n\n🥛 Lait pasteurisé")
-    st.caption("FOODNEXA Research Intelligence V2.1")
+    st.caption("FOODNEXA v1.0")
 
 
 # =====================================================
@@ -349,280 +299,286 @@ elif page == "🔬 Nouvelle analyse":
 
 
 # =====================================================
-# RESEARCH DATA + SUPABASE
+# RESEARCH DATA + SUPABASE - V2
 # =====================================================
 
 elif page == "🧪 Research Data":
-    st.title("🧪 FOODNEXA Research Data V2")
-    st.write("Collecte multi-produits des résultats physico-chimiques, microbiologiques, sensoriels et technologiques.")
-    st.info("Saisissez uniquement les résultats réellement mesurés. Les champs sont facultatifs sauf l'identifiant du lot et le produit. Les limites de conformité doivent être documentées selon le produit, la méthode et la réglementation applicable.")
+    st.title("🧪 FOODNEXA Research Data | V2")
+    st.write("Collecte multi-domaines des données physico-chimiques, microbiologiques, contaminants, procédé, emballage et traçabilité.")
+    st.warning("Renseignez uniquement les résultats réellement mesurés. Laissez vide tout paramètre non analysé : une valeur absente n'est jamais interprétée comme zéro ou comme un résultat conforme.")
 
-    def optional_float(label, key, help_text=None):
-        raw = st.text_input(label, key=key, help=help_text, placeholder="Laisser vide si non analysé")
+    def optional_number(label, key, help_text=None):
+        raw = st.text_input(label, key=key, placeholder="Laisser vide si non mesuré", help=help_text)
         if not raw.strip():
             return None
         try:
             value = float(raw.strip().replace(",", "."))
             if not pd.notna(value):
-                raise ValueError
+                return None
             return value
         except ValueError:
-            st.error(f"Valeur numérique invalide : {label}")
-            return "__INVALID__"
+            st.error(f"Valeur numérique invalide pour : {label}")
+            st.stop()
 
-    with st.form("research_data_v2_form"):
-        st.subheader("1. Identification et traçabilité")
-        a, b, c = st.columns(3)
-        with a:
-            research_batch_id = st.text_input("ID du lot *", key="research_v2_batch")
-            research_product = st.text_input("Nom du produit *", value="Lait pasteurisé", key="research_v2_product")
-            product_category = st.selectbox("Catégorie", ["Produits laitiers", "Céréales et farines", "Fruits et légumes", "Huiles et matières grasses", "Viandes et poissons", "Boulangerie", "Boissons", "Autre"], key="research_v2_category")
-        with b:
-            supplier = st.text_input("Fournisseur", key="research_v2_supplier")
-            sampling_date = st.date_input("Date de prélèvement", key="research_v2_sampling_date")
-            analysis_date = st.date_input("Date d'analyse", key="research_v2_analysis_date")
-        with c:
-            sample_reference = st.text_input("Référence échantillon", key="research_v2_sample")
-            laboratory = st.text_input("Laboratoire / source", key="research_v2_lab")
-            analyst = st.text_input("Analyste / responsable", key="research_v2_analyst")
+    def optional_yes_no(label, key):
+        choice = st.selectbox(label, ["Non renseigné", "Oui", "Non"], key=key)
+        return True if choice == "Oui" else False if choice == "Non" else None
 
-        st.subheader("2. Conditions de conservation et procédé")
-        x1, x2, x3 = st.columns(3)
-        with x1:
-            temperature = optional_float("Température (°C)", "research_v2_temp")
-            storage_days = optional_float("Durée stockage (jours)", "research_v2_storage")
-            ph = optional_float("pH", "research_v2_ph")
-        with x2:
-            cold_chain = st.selectbox("Rupture chaîne du froid", ["Non renseigné", "Non", "Oui"], key="research_v2_cold")
-            hygiene = st.selectbox("Hygiène maîtrisée", ["Non renseigné", "Oui", "Non"], key="research_v2_hygiene")
-            pasteurized = st.selectbox("Traitement thermique", ["Non renseigné", "Pasteurisé", "Stérilisé", "UHT", "Aucun / autre"], key="research_v2_heat")
-        with x3:
-            process_temp = optional_float("Température procédé (°C)", "research_v2_process_temp")
-            process_time = optional_float("Durée procédé (min)", "research_v2_process_time")
-            brix = optional_float("Brix (°Bx)", "research_v2_brix")
+    with st.form("foodnexa_research_v2_form", clear_on_submit=False):
+        st.subheader("1. Identification et traçabilité de l'échantillon")
+        id1, id2, id3 = st.columns(3)
+        with id1:
+            research_batch_id = st.text_input("ID du lot *", placeholder="Ex. LOT-2026-001")
+            research_product = st.text_input("Nom du produit *", value="Lait pasteurisé")
+            product_category = st.selectbox("Catégorie du produit", ["Produits laitiers", "Produits végétaux", "Céréales et farines", "Viandes et volailles", "Poissons et produits de la mer", "Boissons", "Huiles et matières grasses", "Autre"])
+        with id2:
+            sample_reference = st.text_input("Référence de l'échantillon")
+            supplier = st.text_input("Fournisseur")
+            sampling_date = st.date_input("Date de prélèvement", value=None)
+        with id3:
+            analysis_date = st.date_input("Date d'analyse", value=None)
+            laboratory = st.text_input("Laboratoire")
+            analyst = st.text_input("Analyste")
 
-        st.subheader("3. Analyses physico-chimiques")
-        st.caption("Valeurs facultatives : renseignez la valeur et l'unité du rapport laboratoire.")
-        phys_labels = {
-            "moisture_percent": "Humidité (%)",
-            "dry_matter_percent": "Matière sèche (%)",
-            "ash_percent": "Cendres (%)",
-            "protein_percent": "Protéines (%)",
-            "fat_percent": "Matières grasses (%)",
-            "titratable_acidity": "Acidité titrable",
-            "density": "Densité",
-            "conductivity": "Conductivité",
-            "viscosity": "Viscosité",
-            "salt_percent": "Sel (%)",
-            "peroxide_value": "Indice de peroxyde",
-            "free_fatty_acidity": "Acidité grasse / AGL",
-        }
-        physicochemical = {}
-        cols = st.columns(3)
-        for i, (key, label) in enumerate(phys_labels.items()):
-            with cols[i % 3]:
-                physicochemical[key] = optional_float(label, f"research_v2_phys_{key}")
+        st.divider()
+        st.subheader("2. Paramètres physico-chimiques")
+        pcols = st.columns(4)
+        phys_labels = [
+            ("Température (°C)", "temperature_celsius"), ("Durée stockage (jours)", "storage_days"),
+            ("pH", "ph"), ("Humidité (%)", "humidity_percent"),
+            ("Matière sèche (%)", "dry_matter_percent"), ("Cendres (%)", "ash_percent"),
+            ("Protéines (%)", "protein_percent"), ("Matières grasses (%)", "fat_percent"),
+            ("Acidité titrable", "titratable_acidity"), ("Densité", "density"),
+            ("Conductivité", "conductivity"), ("Viscosité", "viscosity"),
+            ("Brix (°Bx)", "brix"), ("Sel (%)", "salt_percent"),
+            ("Granulométrie", "particle_size"),
+        ]
+        phys_values = {}
+        for i, (label, field) in enumerate(phys_labels):
+            with pcols[i % 4]:
+                phys_values[field] = optional_number(label, f"v2_{field}")
 
-        st.subheader("4. Analyses microbiologiques")
-        micro_labels = {
-            "total_viable_count": "Flore totale",
-            "enterobacteriaceae_count": "Enterobacteriaceae",
-            "coliform_count": "Coliformes",
-            "e_coli_count": "E. coli",
-            "yeast_mould_count": "Levures et moisissures",
-            "staphylococcus_aureus_count": "Staphylococcus aureus",
-            "bacillus_cereus_count": "Bacillus cereus",
-            "listeria_monocytogenes_count": "Listeria monocytogenes",
-        }
-        microbiology = {}
-        cols = st.columns(3)
-        for i, (key, label) in enumerate(micro_labels.items()):
-            with cols[i % 3]:
-                microbiology[key] = optional_float(f"{label} (UFC/g, UFC/mL ou unité rapport)", f"research_v2_micro_{key}")
-        pathogen = st.selectbox("Salmonella", ["Non analysée", "Non détectée", "Détectée"], key="research_v2_salmonella")
+        st.divider()
+        st.subheader("3. Analyses microbiologiques")
+        mcols = st.columns(4)
+        micro_labels = [
+            ("Flore totale / TVC", "total_viable_count"),
+            ("Enterobacteriaceae", "enterobacteriaceae_count"),
+            ("Coliformes", "coliform_count"),
+            ("E. coli", "e_coli_count"),
+            ("Levures et moisissures", "yeast_mould_count"),
+            ("Staphylococcus aureus", "staphylococcus_aureus_count"),
+            ("Bacillus cereus", "bacillus_cereus_count"),
+            ("Listeria monocytogenes", "listeria_monocytogenes_count"),
+        ]
+        micro_values = {}
+        for i, (label, field) in enumerate(micro_labels):
+            with mcols[i % 4]:
+                micro_values[field] = optional_number(label, f"v2_{field}", "Indiquer l'unité dans Analyse units.")
+        salmonella = st.selectbox("Salmonella", ["Non analysée", "Non détectée", "Détectée"], key="v2_salmonella")
 
-        st.subheader("5. Sensoriel, contaminants et emballage")
-        d1, d2 = st.columns(2)
-        with d1:
-            sensory_status = st.selectbox("Évaluation sensorielle", ["Non évaluée", "Conforme", "Non conforme"], key="research_v2_sensory")
-            sensory_notes = st.text_area("Notes sensorielles (odeur, goût, couleur, texture)", key="research_v2_sensory_notes")
-            pesticide = optional_float("Résidus pesticides", "research_v2_pesticide")
-            lead = optional_float("Plomb (mg/kg ou unité rapport)", "research_v2_lead")
-            cadmium = optional_float("Cadmium (mg/kg ou unité rapport)", "research_v2_cadmium")
-            mercury = optional_float("Mercure (mg/kg ou unité rapport)", "research_v2_mercury")
-            arsenic = optional_float("Arsenic (mg/kg ou unité rapport)", "research_v2_arsenic")
-            aflatoxin = optional_float("Aflatoxines", "research_v2_aflatoxin")
-            mycotoxin = optional_float("Autres mycotoxines", "research_v2_mycotoxin")
-        with d2:
-            packaging_integrity = st.selectbox("Intégrité emballage", ["Non évaluée", "Conforme", "Non conforme"], key="research_v2_packaging")
-            net_weight = optional_float("Poids net mesuré (g)", "research_v2_weight")
-            seal_integrity_score = optional_float("Score intégrité scellage", "research_v2_seal_score")
-            vacuum_level = optional_float("Niveau de vide (unité rapport)", "research_v2_vacuum")
-            seal_check = st.selectbox("Contrôle scellage", ["Non évalué", "Conforme", "Non conforme"], key="research_v2_seal")
-            nonconformity = st.selectbox("Non-conformité confirmée", ["Non évaluée", "Non", "Oui"], key="research_v2_nonconf")
-            expert_label = st.selectbox("Classification expert qualité", ["Non attribuée", "Faible", "Modéré", "Élevé"], key="research_v2_risk")
+        st.divider()
+        st.subheader("4. Contaminants chimiques")
+        ccols = st.columns(4)
+        contaminant_labels = [
+            ("Résidus de pesticides", "pesticide_residue"), ("Plomb", "lead"),
+            ("Cadmium", "cadmium"), ("Mercure", "mercury"),
+            ("Arsenic", "arsenic"), ("Aflatoxines", "aflatoxin"),
+            ("Mycotoxines (autres)", "mycotoxin"),
+        ]
+        contaminant_values = {}
+        for i, (label, field) in enumerate(contaminant_labels):
+            with ccols[i % 4]:
+                contaminant_values[field] = optional_number(label, f"v2_{field}", "Respecter l'unité déclarée, par exemple µg/kg ou mg/kg.")
 
-        st.subheader("6. Méthodes, unités et références")
-        units = st.text_input("Unités complémentaires / précisions", placeholder="Ex. UFC/g, mg/kg, g/100g…", key="research_v2_units")
-        methods = st.text_input("Méthodes d'analyse / normes utilisées", placeholder="Ex. ISO, méthode interne, référence laboratoire…", key="research_v2_methods")
-        limits = st.text_area("Limites / critères applicables et source", placeholder="Indiquer valeur limite, unité, produit concerné et référence réglementaire ou spécification.", key="research_v2_limits")
-        notes = st.text_area("Commentaires complémentaires", key="research_v2_notes")
+        st.divider()
+        st.subheader("5. Procédé et chaîne du froid")
+        prcols = st.columns(4)
+        process_labels = [
+            ("Température de traitement (°C)", "processing_temperature_celsius"),
+            ("Temps de traitement (min)", "processing_time_minutes"),
+            ("Température de refroidissement (°C)", "cooling_temperature_celsius"),
+            ("Temps de refroidissement (min)", "cooling_time_minutes"),
+        ]
+        process_values = {}
+        for i, (label, field) in enumerate(process_labels):
+            with prcols[i]:
+                process_values[field] = optional_number(label, f"v2_{field}")
+        b1, b2, b3 = st.columns(3)
+        with b1:
+            cold_chain = optional_yes_no("Rupture de chaîne du froid ?", "v2_cold_chain")
+        with b2:
+            hygiene = optional_yes_no("Hygiène maîtrisée ?", "v2_hygiene")
+        with b3:
+            pasteurized = optional_yes_no("Produit pasteurisé ?", "v2_pasteurized")
+
+        st.divider()
+        st.subheader("6. Contrôle sensoriel et emballage")
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            sensory_status = st.selectbox("État sensoriel", ["Non évalué", "Conforme", "Non conforme"], key="v2_sensory")
+        with s2:
+            net_weight = optional_number("Poids net", "v2_net_weight")
+            seal_integrity = optional_number("Intégrité du scellage (score)", "v2_seal_integrity")
+        with s3:
+            vacuum_level = optional_number("Niveau de vide", "v2_vacuum_level")
+            nonconformity = optional_yes_no("Non-conformité détectée ?", "v2_nonconformity")
+
+        st.divider()
+        st.subheader("7. Méthodes, unités et référence réglementaire")
+        a1, a2, a3 = st.columns(3)
+        with a1:
+            analysis_units = st.text_input("Unités des analyses", placeholder="Ex. UFC/g ; mg/kg ; %")
+        with a2:
+            analysis_methods = st.text_input("Méthodes d'analyse", placeholder="Ex. ISO / méthode interne")
+        with a3:
+            limits_reference = st.text_input("Référence des limites applicables", placeholder="Norme / règlement / cahier des charges")
+        expert_risk_label = st.selectbox("Étiquette de risque attribuée par expert", ["Non attribué", "Faible", "Modéré", "Élevé"])
+        notes = st.text_area("Notes complémentaires", placeholder="Conditions de prélèvement, observations, incertitudes, commentaires...")
         submitted = st.form_submit_button("💾 ENREGISTRER L'OBSERVATION V2", type="primary", use_container_width=True)
 
     if submitted:
-        numeric_values = [temperature, storage_days, ph, process_temp, process_time, brix,
-                          *physicochemical.values(), *microbiology.values(), pesticide,
-                          lead, cadmium, mercury, arsenic, aflatoxin, mycotoxin,
-                          net_weight, seal_integrity_score, vacuum_level]
         if not research_batch_id.strip() or not research_product.strip():
-            st.error("L'identifiant du lot et le nom du produit sont obligatoires.")
-        elif "__INVALID__" in numeric_values:
-            st.error("Corrigez les valeurs numériques signalées.")
-        else:
-            observation = {
-                "batch_id": research_batch_id.strip(),
-                "product_name": research_product.strip(),
-                "product_category": product_category,
-                "sample_reference": sample_reference or None,
-                "supplier": supplier or None,
-                "sampling_date": str(sampling_date),
-                "analysis_date": str(analysis_date),
-                "laboratory": laboratory or None,
-                "analyst": analyst or None,
-                "temperature_celsius": temperature,
-                "storage_days": storage_days,
-                "ph": ph,
-                "cold_chain_broken": {"Non renseigné": None, "Non": False, "Oui": True}[cold_chain],
-                "hygiene_controlled": {"Non renseigné": None, "Oui": True, "Non": False}[hygiene],
-                "pasteurized": {"Non renseigné": None, "Pasteurisé": True, "Stérilisé": True, "UHT": True, "Aucun / autre": False}[pasteurized],
-                "process_data": {"processing_temperature_celsius": process_temp, "processing_time_minutes": process_time, "brix": brix},
-                "physicochemical_results": {k:v for k,v in physicochemical.items() if v is not None},
-                "microbiological_results": {k:v for k,v in microbiology.items() if v is not None},
-                "contaminant_results": {"pesticide_residue": pesticide, "lead": lead, "cadmium": cadmium, "mercury": mercury, "arsenic": arsenic, "aflatoxin": aflatoxin, "mycotoxin": mycotoxin},
-                "sensory_results": {"status": sensory_status, "notes": sensory_notes or None},
-                "packaging_results": {"integrity": packaging_integrity, "net_weight": net_weight, "seal_integrity_score": seal_integrity_score, "vacuum_level": vacuum_level, "seal_check": seal_check},
-                "salmonella_detected": {"Non analysée": None, "Non détectée": False, "Détectée": True}[pathogen],
-                "sensory_status": None if sensory_status == "Non évaluée" else sensory_status,
-                "nonconformity_detected": {"Non évaluée": None, "Non": False, "Oui": True}[nonconformity],
-                "expert_risk_label": None if expert_label == "Non attribuée" else expert_label,
-                "analysis_units": units or None,
-                "analysis_methods": methods or None,
-                "applicable_limits_reference": limits or None,
-                "notes": notes or None,
-            }
-            import json
-            csv_row = {
-                key: json.dumps(value, ensure_ascii=False) if isinstance(value, dict) else value
-                for key, value in observation.items()
-            }
-            try:
-                old = load_csv(RESEARCH_CSV_FILE)
-                if not old.empty and "batch_id" in old.columns:
-                    old = old[old["batch_id"].astype(str) != research_batch_id.strip()]
-                updated = pd.concat([old, pd.DataFrame([csv_row])], ignore_index=True)
-                updated.to_csv(RESEARCH_CSV_FILE, index=False, encoding="utf-8-sig")
-                st.success("Observation enregistrée dans le dataset CSV.")
-            except Exception as error:
-                show_error("Échec de sauvegarde CSV.", error)
-            try:
-                save_research_observation(observation)
-                st.success("Observation enregistrée dans Supabase.")
-            except Exception as error:
-                show_error("CSV conservé, mais sauvegarde Supabase échouée. Vérifiez la migration SQL V2.", error)
+            st.error("L'ID du lot et le nom du produit sont obligatoires.")
+            st.stop()
+
+        physicochemical_results = {k: v for k, v in phys_values.items() if v is not None}
+        microbiological_results = {k: v for k, v in micro_values.items() if v is not None}
+        contaminant_results = {k: v for k, v in contaminant_values.items() if v is not None}
+        process_data = {k: v for k, v in process_values.items() if v is not None}
+        packaging_results = {k: v for k, v in {
+            "net_weight": net_weight, "seal_integrity_score": seal_integrity,
+            "vacuum_level": vacuum_level,
+        }.items() if v is not None}
+        sensory_results = {
+            "sensory_status": None if sensory_status == "Non évalué" else sensory_status,
+            "nonconformity_detected": nonconformity,
+        }
+        observation = {
+            "batch_id": research_batch_id.strip(), "product_name": research_product.strip(),
+            "product_category": product_category, "sample_reference": sample_reference or None,
+            "supplier": supplier or None,
+            "sampling_date": sampling_date.isoformat() if sampling_date else None,
+            "analysis_date": analysis_date.isoformat() if analysis_date else None,
+            "laboratory": laboratory or None, "analyst": analyst or None,
+            "temperature_celsius": phys_values.get("temperature_celsius"),
+            "storage_days": phys_values.get("storage_days"), "ph": phys_values.get("ph"),
+            "cold_chain_broken": cold_chain, "hygiene_controlled": hygiene,
+            "pasteurized": pasteurized,
+            "total_viable_count": micro_values.get("total_viable_count"),
+            "enterobacteriaceae_count": micro_values.get("enterobacteriaceae_count"),
+            "coliform_count": micro_values.get("coliform_count"),
+            "staphylococcus_aureus_count": micro_values.get("staphylococcus_aureus_count"),
+            "salmonella_detected": True if salmonella == "Détectée" else False if salmonella == "Non détectée" else None,
+            "sensory_status": None if sensory_status == "Non évalué" else sensory_status,
+            "nonconformity_detected": nonconformity,
+            "expert_risk_label": None if expert_risk_label == "Non attribué" else expert_risk_label,
+            "process_data": process_data, "physicochemical_results": physicochemical_results,
+            "microbiological_results": microbiological_results,
+            "contaminant_results": contaminant_results,
+            "sensory_results": sensory_results, "packaging_results": packaging_results,
+            "analysis_units": analysis_units or None, "analysis_methods": analysis_methods or None,
+            "applicable_limits_reference": limits_reference or None, "notes": notes or None,
+        }
+        # Append-only local backup: repeated samples from the same lot are allowed.
+        csv_row = {k: v for k, v in observation.items() if not isinstance(v, dict)}
+        for group in (physicochemical_results, microbiological_results, contaminant_results, process_data, packaging_results):
+            csv_row.update(group)
+        csv_row["salmonella_detected"] = salmonella
+        csv_row["nonconformity_detected"] = "Non renseigné" if nonconformity is None else "Oui" if nonconformity else "Non"
+        try:
+            save_csv_row(RESEARCH_CSV_FILE, csv_row)
+            st.success("Observation ajoutée au Research Dataset local.")
+        except Exception as error:
+            show_error("Échec de la sauvegarde CSV.", error)
+        try:
+            save_research_observation(observation)
+            st.success("Observation enregistrée dans Supabase.")
+        except Exception as error:
+            show_error("La sauvegarde locale est conservée, mais Supabase a refusé l'observation.", error)
 
     st.divider()
-    st.subheader("📊 Research Dataset")
+    st.subheader("📚 Research Dataset")
     research_view = load_csv(RESEARCH_CSV_FILE)
     if not research_view.empty:
-        st.metric("Observations", len(research_view))
-        st.dataframe(research_view, use_container_width=True, hide_index=True)
-        st.download_button("⬇️ Télécharger Research Dataset CSV", research_view.to_csv(index=False).encode("utf-8-sig"), "foodnexa_research_dataset.csv", "text/csv", use_container_width=True)
+        st.metric("Nombre d'observations", len(research_view))
+        st.dataframe(research_view, width="stretch", hide_index=True)
+        st.download_button("⬇️ Télécharger Research Dataset (CSV)", data=research_view.to_csv(index=False).encode("utf-8-sig"), file_name=RESEARCH_CSV_FILE, mime="text/csv", use_container_width=True)
+        st.info("Les lignes représentent des observations/échantillons. Un même lot peut apparaître plusieurs fois.")
+        try:
+            quality = generate_quality_report(research_view)
+            st.subheader("🔎 Data Quality Check")
+            q1, q2, q3, q4 = st.columns(4)
+            q1.metric("Observations", quality.get("rows", len(research_view)))
+            q2.metric("Colonnes", quality.get("columns", len(research_view.columns)))
+            q3.metric("Quality Score", f"{quality.get('quality_score', 0):.1f}%")
+            q4.metric("Doublons exacts", quality.get("duplicates", 0))
+            st.caption("Le score mesure la complétude/cohérence technique du fichier, pas la sécurité sanitaire ni la conformité réglementaire du produit.")
+        except Exception as error:
+            show_error("Le contrôle qualité du dataset a rencontré une erreur.", error)
     else:
-        st.info("Aucune observation enregistrée pour le moment.")
-    st.warning("Les champs avancés sont dépendants du produit et de la méthode. FOODNEXA ne déclare pas automatiquement la conformité sans limite documentée et référence applicable.")
+        st.info("Aucune observation locale pour le moment. Ajoutez un premier échantillon ci-dessus.")
 
+
+# =====================================================
+# RESEARCH ANALYTICS
+# =====================================================
 
 elif page == "📊 Research Analytics":
-    st.title("📊 FOODNEXA Research Intelligence")
-    st.write("Analyse descriptive multi-domaines des observations alimentaires, par catégorie de produit.")
-    st.warning("Analyses exploratoires uniquement : elles ne prouvent pas la conformité, ne démontrent pas de causalité et ne remplacent pas les analyses de laboratoire.")
-
-    local_data = load_csv(RESEARCH_CSV_FILE)
-    cloud_data = pd.DataFrame()
-    try:
-        cloud_rows = get_research_observations(limit=1000)
-        if cloud_rows:
-            cloud_data = pd.DataFrame(cloud_rows)
-    except Exception:
-        st.caption("Lecture Supabase indisponible pour cette session ; affichage des données CSV locales.")
-
-    if not cloud_data.empty and "batch_id" in cloud_data.columns:
-        if not local_data.empty and "batch_id" in local_data.columns:
-            local_data = local_data[~local_data["batch_id"].astype(str).isin(cloud_data["batch_id"].astype(str))]
-        data = pd.concat([cloud_data, local_data], ignore_index=True, sort=False)
-    else:
-        data = local_data
-
+    st.title("📊 FOODNEXA Research Analytics V2")
+    st.write("Statistiques descriptives multi-domaines, calculées uniquement sur les résultats réellement renseignés.")
+    st.warning("Analyse exploratoire uniquement : elle ne constitue pas un modèle prédictif validé et ne remplace pas les analyses de laboratoire ni l'interprétation réglementaire.")
+    data = load_csv(RESEARCH_CSV_FILE)
     if data.empty:
-        st.info("Aucune observation disponible. Ajoutez d'abord des données dans Research Data.")
+        st.info("Aucune donnée disponible. Ajoutez des observations dans Research Data.")
     else:
-        analytics_input = flatten_research_for_analytics(data)
-        prepared = prepare_research_data(analytics_input)
-        categories = ["Toutes"] + sorted(prepared["product_category"].dropna().astype(str).unique().tolist())
-        selected_category = st.selectbox("Filtrer par catégorie de produit", categories)
-        if selected_category != "Toutes":
-            prepared = prepared[prepared["product_category"].astype(str) == selected_category]
-        result = generate_research_analytics(prepared)
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Observations", result["observations"])
-        c2.metric("Catégories", int(prepared["product_category"].nunique()))
-        c3.metric("Lots distincts", int(prepared["batch_id"].nunique()) if "batch_id" in prepared else result["observations"])
-
-        st.subheader("1. Répartition par catégorie")
-        st.dataframe(result["category_summary"], use_container_width=True, hide_index=True)
-
-        st.subheader("2. Statistiques par domaine d'analyse")
-        group_labels = {
-            "physicochemical": "Physico-chimie",
-            "microbiological": "Microbiologie",
-            "contaminants": "Contaminants",
-            "process": "Procédé",
-            "packaging": "Emballage",
-        }
-        if result["group_statistics"]:
-            for group, stats in result["group_statistics"].items():
-                with st.expander(group_labels.get(group, group), expanded=True):
-                    st.dataframe(stats, use_container_width=True)
+        if "product_category" in data.columns:
+            categories = ["Toutes les catégories"] + sorted(data["product_category"].dropna().astype(str).unique().tolist())
+            selected_category = st.selectbox("Filtrer par catégorie", categories)
+            if selected_category != "Toutes les catégories":
+                data = data[data["product_category"].astype(str) == selected_category]
+        if "product_name" in data.columns:
+            products = ["Tous les produits"] + sorted(data["product_name"].dropna().astype(str).unique().tolist())
+            selected_product = st.selectbox("Filtrer par produit", products)
+            if selected_product != "Tous les produits":
+                data = data[data["product_name"].astype(str) == selected_product]
+        st.divider()
+        total = len(data)
+        label_series = data.get("expert_risk_label", pd.Series(index=data.index, dtype="object"))
+        assigned = label_series.dropna().astype(str).str.strip()
+        risk_count = int(assigned.isin(["Faible", "Modéré", "Élevé"]).sum())
+        salm = data.get("salmonella_detected", pd.Series(index=data.index, dtype="object")).astype(str).str.strip().str.casefold()
+        salm_valid = ~salm.isin(["", "nan", "none", "non analysée", "non analysé", "non renseigné"])
+        nonconf = data.get("nonconformity_detected", pd.Series(index=data.index, dtype="object")).astype(str).str.strip().str.casefold()
+        nonconf_valid = ~nonconf.isin(["", "nan", "none", "non évaluée", "non évalué", "non renseigné"])
+        srate = (salm[salm_valid].isin(["détectée", "detectee", "oui", "true", "positive"]).mean() * 100) if salm_valid.any() else None
+        nrate = (nonconf[nonconf_valid].isin(["oui", "true", "non conforme", "non-conforme"]).mean() * 100) if nonconf_valid.any() else None
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Observations", total)
+        k2.metric("Labels experts renseignés", f"{risk_count}/{total}")
+        k3.metric("Salmonella détectée", "N/D" if srate is None else f"{srate:.1f}%")
+        k4.metric("Non-conformités", "N/D" if nrate is None else f"{nrate:.1f}%")
+        if risk_count:
+            st.subheader("Distribution des labels experts")
+            dist = assigned[assigned.isin(["Faible", "Modéré", "Élevé"])].value_counts().reindex(["Faible", "Modéré", "Élevé"], fill_value=0)
+            st.bar_chart(dist)
+        st.subheader("Statistiques descriptives des paramètres numériques")
+        excluded = {"id"}
+        numeric_data = data.drop(columns=[c for c in excluded if c in data.columns]).apply(pd.to_numeric, errors="coerce")
+        numeric_cols = [c for c in numeric_data.columns if numeric_data[c].notna().any()]
+        if numeric_cols:
+            stats = numeric_data[numeric_cols].describe().T[["count", "mean", "50%", "min", "max"]].rename(columns={"50%": "median"}).round(3)
+            st.dataframe(stats, use_container_width=True)
         else:
-            st.info("Aucun résultat quantitatif mesuré. Les champs vides ne sont jamais considérés comme zéro.")
-
-        st.subheader("3. Répartition des classes de risque expert")
-        st.dataframe(result["risk_percentages"], use_container_width=True, hide_index=True)
-        if int(result["risk_distribution"]["Nombre"].sum()) > 0:
-            st.bar_chart(result["risk_distribution"].set_index("Risk Level")["Nombre"])
-
-        st.subheader("4. Indicateurs microbiologiques et qualité")
-        salmonella = result["salmonella_rate"]
-        nonconf = result["nonconformity_rate"]
-        q1, q2 = st.columns(2)
-        q1.metric("Salmonella détectée", f"{salmonella:.1f}%" if pd.notna(salmonella) else "Non disponible")
-        q2.metric("Non-conformité", f"{nonconf:.1f}%" if pd.notna(nonconf) else "Non disponible")
-        st.caption("Les taux sont calculés uniquement sur les résultats renseignés. Les tests non réalisés sont exclus du dénominateur.")
-
-        st.subheader("5. Données manquantes")
-        if not result["missingness"].empty:
-            st.dataframe(result["missingness"], use_container_width=True, hide_index=True)
-
-        st.subheader("6. Corrélations exploratoires avec la classe de risque")
-        if not result["correlations"].empty:
-            st.dataframe(result["correlations"], use_container_width=True, hide_index=True)
-            st.caption("Les corrélations sur de petits échantillons sont instables et ne démontrent pas une relation causale.")
-        else:
-            st.info("Au moins trois observations avec valeurs et classes variables sont nécessaires pour calculer une corrélation.")
-
-        export_data = prepared.drop(columns=[c for c in prepared.columns if c.endswith("__parsed")], errors="ignore")
-        st.download_button("⬇️ Télécharger les données filtrées", export_data.to_csv(index=False).encode("utf-8-sig"), "foodnexa_research_analytics_export.csv", "text/csv", use_container_width=True)
+            st.info("Aucune mesure numérique disponible pour les filtres sélectionnés.")
+        st.subheader("Complétude des données")
+        missing_rows = []
+        for col in data.columns:
+            available_count = int(data[col].notna().sum())
+            missing_rows.append({"Variable": col, "Renseignées": available_count, "Manquantes": total - available_count, "Complétude (%)": round(available_count / total * 100, 1) if total else 0})
+        missing_df = pd.DataFrame(missing_rows).sort_values("Complétude (%)")
+        st.dataframe(missing_df, use_container_width=True, hide_index=True)
+        st.info("Un taux de complétude élevé ne prouve ni la conformité ni l'innocuité alimentaire. Les mesures doivent être interprétées avec leurs unités, méthodes, matrices et limites applicables.")
 
 
 # =====================================================
