@@ -76,9 +76,29 @@ h1, h2, h3,
     font-weight: 850 !important;
     opacity: 1 !important;
 }
-h1 { font-size: 1.85rem !important; color: #102B46 !important; }
-h2 { font-size: 1.42rem !important; color: #075B75 !important; }
-h3 { font-size: 1.13rem !important; color: #126B52 !important; }
+h1 { font-size: 1.42rem !important; color: #075B9A !important; }
+h2 { font-size: 1.08rem !important; color: #08758F !important; }
+h3 { font-size: 0.94rem !important; color: #16734F !important; }
+
+/* Smaller, consistent text across the application */
+[data-testid="stAppViewContainer"] .main p,
+[data-testid="stAppViewContainer"] .main li,
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+    font-size: 0.84rem !important;
+    line-height: 1.45 !important;
+}
+[data-testid="stAppViewContainer"] .main label,
+[data-testid="stAppViewContainer"] .main .stSelectbox,
+[data-testid="stAppViewContainer"] .main .stTextInput,
+[data-testid="stAppViewContainer"] .main .stNumberInput,
+[data-testid="stAppViewContainer"] .main .stDateInput,
+[data-testid="stAppViewContainer"] .main .stTextArea {
+    font-size: 0.80rem !important;
+}
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+    font-size: 0.72rem !important;
+}
 
 /* Markdown emphasis and links remain visible on white */
 [data-testid="stAppViewContainer"] .main strong,
@@ -145,15 +165,15 @@ div[data-testid="stMetric"] * {
     color: #FFFFFF !important;
 }
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    font-size: 1.55rem !important;
+    font-size: 1.28rem !important;
     font-weight: 800 !important;
 }
 div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
-    font-size: 0.82rem !important;
+    font-size: 0.72rem !important;
     font-weight: 700 !important;
 }
 div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
-    font-size: 0.76rem !important;
+    font-size: 0.68rem !important;
 }
 
 /* Sidebar */
@@ -174,6 +194,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label {
     color: #102B46 !important;
     opacity: 1 !important;
     font-weight: 700 !important;
+    font-size: 0.78rem !important;
 }
 
 /* Buttons */
@@ -197,6 +218,7 @@ div[data-testid="stDataFrame"] {
 }
 div[data-testid="stDataFrame"] * {
     color: #172B3A !important;
+    font-size: 0.76rem !important;
 }
 
 /* Tabs and expanders */
@@ -218,12 +240,13 @@ div[data-testid="stAlert"] p {
         padding-left: 0.8rem;
         padding-right: 0.8rem;
     }
-    h1 { font-size: 1.45rem !important; }
-    h2 { font-size: 1.2rem !important; }
+    h1 { font-size: 1.18rem !important; }
+    h2 { font-size: 0.98rem !important; }
+    h3 { font-size: 0.88rem !important; }
     .foodnexa-brand-title { font-size: 2.8rem; letter-spacing: 2px; }
     .foodnexa-brand-subtitle { font-size: 0.72rem; letter-spacing: 1.2px; }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-        font-size: 1.2rem !important;
+        font-size: 1.08rem !important;
     }
 }
 </style>
