@@ -721,6 +721,18 @@ elif page == "🧪 Research Data":
             q2.metric("Colonnes", quality.get("columns", len(research_view.columns)))
             q3.metric("Dataset Quality Score", f"{quality.get('quality_score', 0):.1f}%")
             q4.metric("Doublons exacts", quality.get("duplicates", 0))
+
+            v1, v2, v3 = st.columns(3)
+            v1.metric("Statut de validation", quality.get("validation_status", "Non évalué"))
+            v2.metric("Erreurs techniques", quality.get("validation_errors", 0))
+            v3.metric("Alertes à vérifier", quality.get("validation_warnings", 0))
+            if quality.get("validation_errors", 0):
+                st.error("Des erreurs techniques ont été détectées. Vérifiez les lignes signalées avant toute analyse scientifique.")
+            elif quality.get("validation_warnings", 0):
+                st.warning("Certaines informations demandent une vérification ou un complément documentaire.")
+            else:
+                st.success("Aucune anomalie détectée par les contrôles actuellement activés.")
+
             st.caption(quality.get("interpretation", "Score documentaire uniquement."))
             st.info(quality.get("message", "Les champs non renseignés ne sont pas considérés comme des résultats négatifs."))
 
