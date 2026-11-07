@@ -58,20 +58,38 @@ html, body, [data-testid="stApp"],
     padding-bottom: 2.5rem;
 }
 
-/* Typography and page titles */
+/* Strong, readable typography on the white background */
+[data-testid="stAppViewContainer"] .main,
 [data-testid="stAppViewContainer"] .main p,
-[data-testid="stAppViewContainer"] .main label,
-[data-testid="stAppViewContainer"] .main li {
-    color: #243B53;
+[data-testid="stAppViewContainer"] .main li,
+[data-testid="stAppViewContainer"] .main span,
+[data-testid="stAppViewContainer"] .main small,
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+    color: #1B2735 !important;
 }
 
-h1, h2, h3 {
-    color: var(--foodnexa-navy) !important;
-    font-weight: 800 !important;
+h1, h2, h3,
+[data-testid="stAppViewContainer"] .main h1,
+[data-testid="stAppViewContainer"] .main h2,
+[data-testid="stAppViewContainer"] .main h3 {
+    font-weight: 850 !important;
+    opacity: 1 !important;
 }
-h1 { font-size: 1.85rem !important; }
-h2 { font-size: 1.42rem !important; color: #087E9B !important; }
-h3 { font-size: 1.13rem !important; color: #16856B !important; }
+h1 { font-size: 1.85rem !important; color: #102B46 !important; }
+h2 { font-size: 1.42rem !important; color: #075B75 !important; }
+h3 { font-size: 1.13rem !important; color: #126B52 !important; }
+
+/* Markdown emphasis and links remain visible on white */
+[data-testid="stAppViewContainer"] .main strong,
+[data-testid="stAppViewContainer"] .main b {
+    color: #102B46 !important;
+}
+[data-testid="stAppViewContainer"] .main a {
+    color: #006B8F !important;
+    font-weight: 700 !important;
+    text-decoration: underline;
+}
 .foodnexa-brand-title {
     text-align: center;
     color: #087E9B !important;
@@ -154,7 +172,8 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label {
 .stDateInput label, .stTextArea label, .stCheckbox label,
 .stRadio label, .stMultiSelect label {
     color: #102B46 !important;
-    font-weight: 650 !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
 }
 
 /* Buttons */
@@ -177,7 +196,7 @@ div[data-testid="stDataFrame"] {
     overflow: hidden !important;
 }
 div[data-testid="stDataFrame"] * {
-    color: #243B53;
+    color: #172B3A !important;
 }
 
 /* Tabs and expanders */
