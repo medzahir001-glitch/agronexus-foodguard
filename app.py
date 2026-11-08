@@ -8,6 +8,7 @@ from foodnexa_data_quality import generate_quality_report
 from foodnexa_supabase import (
     save_risk_assessment,
     save_research_observation,
+    get_research_observations,
 )
 
 # =====================================================
@@ -267,6 +268,60 @@ def save_csv_row(path, row):
     updated = pd.concat([old, pd.DataFrame([row])], ignore_index=True)
     updated.to_csv(path, index=False, encoding="utf-8-sig")
     return updated
+
+
+def flatten_research_for_analytics(frame):
+    """Expand Supabase JSONB result groups into columns for descriptive statistics."""
+    import json
+
+    data = frame.copy() if isinstance(frame, pd.DataFrame) else pd.DataFrame(frame)
+    nested_columns = [
+        "physicochemical_results", "microbiological_results",
+        "contaminant_results", "process_data", "sensory_results",
+        "packaging_results",
+    ]
+    for column in nested_columns:
+        if column not in data.columns:
+            continue
+        expanded_rows = []
+        for raw in data[column]:
+            if isinstance(raw, dict):
+                value = raw
+            elif isinstance(raw, str) and raw.strip():
+                try:
+                    value = json.loads(raw)
+                except (TypeError, ValueError):
+                    value = {}
+            else:
+                value = {}
+            expanded_rows.append(value if isinstance(value, dict) else {})
+        expanded = pd.json_normalize(expanded_rows)
+        for field in expanded.columns:
+            target = field
+            # Preserve an already populated top-level column; otherwise add the JSONB field.
+            if target not in data.columns:
+                data[target] = expanded[field].reindex(data.index)
+            else:
+                empty = data[target].isna() | data[target].astype(str).str.strip().isin(["", "nan", "None"])
+                data.loc[empty, target] = expanded.loc[empty, field]
+    return data
+
+
+def load_research_analytics_data():
+    """Prefer the central Supabase dataset; use local CSV only as a fallback."""
+    local_data = load_csv(RESEARCH_CSV_FILE)
+    try:
+        remote_records = get_research_observations(limit=1000)
+        remote_data = pd.DataFrame(remote_records)
+        if not remote_data.empty:
+            return flatten_research_for_analytics(remote_data), "Supabase", None
+        if not local_data.empty:
+            return flatten_research_for_analytics(local_data), "CSV local (Supabase vide)", None
+        return pd.DataFrame(), "Aucune source", None
+    except Exception as error:
+        if not local_data.empty:
+            return flatten_research_for_analytics(local_data), "CSV local (secours)", error
+        return pd.DataFrame(), "Aucune source", error
 
 
 def show_error(title, error):
@@ -801,9 +856,20 @@ elif page == "📊 Research Analytics":
     st.title("📊 FOODNEXA Research Analytics V2")
     st.write("Statistiques descriptives multi-domaines, calculées uniquement sur les résultats réellement renseignés.")
     st.warning("Analyse exploratoire uniquement : elle ne constitue pas un modèle prédictif validé et ne remplace pas les analyses de laboratoire ni l'interprétation réglementaire.")
-    data = load_csv(RESEARCH_CSV_FILE)
+    data, data_source, source_error = load_research_analytics_data()
+    if data_source == "Supabase":
+        st.caption("Source des données : Supabase — base centrale des observations.")
+    elif data_source.startswith("CSV local"):
+        st.caption(f"Source des données : {data_source}.")
+        if source_error is not None:
+            st.warning("Supabase n'a pas pu être interrogé. Les statistiques affichées proviennent du fichier CSV local de secours.")
     if data.empty:
-        st.info("Aucune donnée disponible. Ajoutez des observations dans Research Data.")
+        if source_error is not None:
+            show_error("Impossible de récupérer les données de recherche depuis Supabase et aucun CSV local exploitable n'est disponible.", source_error)
+        elif data_source == "CSV local (Supabase vide)":
+            st.info("Supabase ne contient pas encore d'observation. Les données locales sont affichées en attendant.")
+        else:
+            st.info("Aucune donnée disponible. Ajoutez des observations dans Research Data.")
     else:
         if "product_category" in data.columns:
             categories = ["Toutes les catégories"] + sorted(data["product_category"].dropna().astype(str).unique().tolist())
