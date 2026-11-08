@@ -270,58 +270,109 @@ def save_csv_row(path, row):
     return updated
 
 
+def _is_missing_or_blank(value):
+    """Safe scalar missing-value check for mixed and pandas extension dtypes."""
+    if value is None:
+        return True
+    try:
+        missing = pd.isna(value)
+        if isinstance(missing, bool) and missing:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return isinstance(value, str) and value.strip().casefold() in {"", "nan", "none", "null"}
+
+
+def _safe_text_series(series):
+    """Convert mixed values to ordinary Python strings without StringDtype casts."""
+    return series.map(lambda value: "" if _is_missing_or_blank(value) else str(value))
+
+
 def flatten_research_for_analytics(frame):
-    """Expand Supabase JSONB result groups into columns for descriptive statistics."""
+    """Expand Supabase JSONB result groups without unsafe pandas string casts."""
     import json
 
     data = frame.copy() if isinstance(frame, pd.DataFrame) else pd.DataFrame(frame)
+    data = data.reset_index(drop=True)
     nested_columns = [
         "physicochemical_results", "microbiological_results",
         "contaminant_results", "process_data", "sensory_results",
         "packaging_results",
     ]
+
     for column in nested_columns:
         if column not in data.columns:
             continue
-        expanded_rows = []
-        for raw in data[column]:
-            if isinstance(raw, dict):
-                value = raw
-            elif isinstance(raw, str) and raw.strip():
+
+        parsed_rows = []
+        for raw in data[column].tolist():
+            value = raw
+            if isinstance(raw, str) and raw.strip():
                 try:
                     value = json.loads(raw)
                 except (TypeError, ValueError):
                     value = {}
-            else:
+            if not isinstance(value, dict):
                 value = {}
-            expanded_rows.append(value if isinstance(value, dict) else {})
-        expanded = pd.json_normalize(expanded_rows)
-        for field in expanded.columns:
-            target = field
-            # Preserve an already populated top-level column; otherwise add the JSONB field.
-            if target not in data.columns:
-                data[target] = expanded[field].reindex(data.index)
-            else:
-                empty = data[target].isna() | data[target].astype(str).str.strip().isin(["", "nan", "None"])
-                data.loc[empty, target] = expanded.loc[empty, field]
+            parsed_rows.append(value)
+
+        # Build each JSONB field as a plain object Series. This avoids pandas
+        # StringDtype assignment errors with mixed JSONB / nullable values.
+        field_names = []
+        for item in parsed_rows:
+            for field in item:
+                if field not in field_names:
+                    field_names.append(field)
+
+        for field in field_names:
+            incoming = [item.get(field) for item in parsed_rows]
+            if field not in data.columns:
+                data[field] = pd.Series(incoming, index=data.index, dtype="object")
+                continue
+
+            current = data[field].tolist()
+            for index, old_value in enumerate(current):
+                if _is_missing_or_blank(old_value) and index < len(incoming):
+                    current[index] = incoming[index]
+            data[field] = pd.Series(current, index=data.index, dtype="object")
+
     return data
 
 
 def load_research_analytics_data():
-    """Prefer the central Supabase dataset; use local CSV only as a fallback."""
+    """Load observations from Supabase, then use the local CSV as a fallback."""
     local_data = load_csv(RESEARCH_CSV_FILE)
+
     try:
         remote_records = get_research_observations(limit=1000)
-        remote_data = pd.DataFrame(remote_records)
-        if not remote_data.empty:
-            return flatten_research_for_analytics(remote_data), "Supabase", None
-        if not local_data.empty:
-            return flatten_research_for_analytics(local_data), "CSV local (Supabase vide)", None
-        return pd.DataFrame(), "Aucune source", None
     except Exception as error:
         if not local_data.empty:
-            return flatten_research_for_analytics(local_data), "CSV local (secours)", error
+            try:
+                return flatten_research_for_analytics(local_data), "CSV local (secours)", error
+            except Exception as local_error:
+                return pd.DataFrame(), "Aucune source", local_error
         return pd.DataFrame(), "Aucune source", error
+
+    if remote_records:
+        try:
+            remote_data = flatten_research_for_analytics(pd.DataFrame(remote_records))
+            if not remote_data.empty:
+                return remote_data, "Supabase", None
+        except Exception as error:
+            if not local_data.empty:
+                try:
+                    return flatten_research_for_analytics(local_data), "CSV local (secours)", error
+                except Exception as local_error:
+                    return pd.DataFrame(), "Aucune source", local_error
+            return pd.DataFrame(), "Aucune source", error
+
+    if not local_data.empty:
+        try:
+            return flatten_research_for_analytics(local_data), "CSV local (Supabase vide)", None
+        except Exception as error:
+            return pd.DataFrame(), "Aucune source", error
+
+    return pd.DataFrame(), "Aucune source", None
 
 
 def show_error(title, error):
@@ -865,30 +916,30 @@ elif page == "📊 Research Analytics":
             st.warning("Supabase n'a pas pu être interrogé. Les statistiques affichées proviennent du fichier CSV local de secours.")
     if data.empty:
         if source_error is not None:
-            show_error("Impossible de récupérer les données de recherche depuis Supabase et aucun CSV local exploitable n'est disponible.", source_error)
+            show_error("Impossible de charger ou traiter les données de recherche depuis Supabase et aucun CSV local exploitable n'est disponible.", source_error)
         elif data_source == "CSV local (Supabase vide)":
             st.info("Supabase ne contient pas encore d'observation. Les données locales sont affichées en attendant.")
         else:
             st.info("Aucune donnée disponible. Ajoutez des observations dans Research Data.")
     else:
         if "product_category" in data.columns:
-            categories = ["Toutes les catégories"] + sorted(data["product_category"].dropna().astype(str).unique().tolist())
+            categories = ["Toutes les catégories"] + sorted(_safe_text_series(data["product_category"].dropna()).unique().tolist())
             selected_category = st.selectbox("Filtrer par catégorie", categories)
             if selected_category != "Toutes les catégories":
-                data = data[data["product_category"].astype(str) == selected_category]
+                data = data[_safe_text_series(data["product_category"]) == selected_category]
         if "product_name" in data.columns:
-            products = ["Tous les produits"] + sorted(data["product_name"].dropna().astype(str).unique().tolist())
+            products = ["Tous les produits"] + sorted(_safe_text_series(data["product_name"].dropna()).unique().tolist())
             selected_product = st.selectbox("Filtrer par produit", products)
             if selected_product != "Tous les produits":
-                data = data[data["product_name"].astype(str) == selected_product]
+                data = data[_safe_text_series(data["product_name"]) == selected_product]
         st.divider()
         total = len(data)
         label_series = data.get("expert_risk_label", pd.Series(index=data.index, dtype="object"))
-        assigned = label_series.dropna().astype(str).str.strip()
+        assigned = _safe_text_series(label_series.dropna()).str.strip()
         risk_count = int(assigned.isin(["Faible", "Modéré", "Élevé"]).sum())
-        salm = data.get("salmonella_detected", pd.Series(index=data.index, dtype="object")).astype(str).str.strip().str.casefold()
+        salm = _safe_text_series(data.get("salmonella_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
         salm_valid = ~salm.isin(["", "nan", "none", "non analysée", "non analysé", "non renseigné"])
-        nonconf = data.get("nonconformity_detected", pd.Series(index=data.index, dtype="object")).astype(str).str.strip().str.casefold()
+        nonconf = _safe_text_series(data.get("nonconformity_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
         nonconf_valid = ~nonconf.isin(["", "nan", "none", "non évaluée", "non évalué", "non renseigné"])
         srate = (salm[salm_valid].isin(["détectée", "detectee", "oui", "true", "positive"]).mean() * 100) if salm_valid.any() else None
         nrate = (nonconf[nonconf_valid].isin(["oui", "true", "non conforme", "non-conforme"]).mean() * 100) if nonconf_valid.any() else None
