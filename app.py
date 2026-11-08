@@ -904,9 +904,10 @@ elif page == "🧪 Research Data":
 # =====================================================
 
 elif page == "📊 Research Analytics":
-    st.title("📊 FOODNEXA Research Analytics V2")
+    st.title("📊 FOODNEXA Research Analytics V2.1")
     st.write("Statistiques descriptives multi-domaines, calculées uniquement sur les résultats réellement renseignés.")
     st.warning("Analyse exploratoire uniquement : elle ne constitue pas un modèle prédictif validé et ne remplace pas les analyses de laboratoire ni l'interprétation réglementaire.")
+
     data, data_source, source_error = load_research_analytics_data()
     if data_source == "Supabase":
         st.caption("Source des données : Supabase — base centrale des observations.")
@@ -914,6 +915,7 @@ elif page == "📊 Research Analytics":
         st.caption(f"Source des données : {data_source}.")
         if source_error is not None:
             st.warning("Supabase n'a pas pu être interrogé. Les statistiques affichées proviennent du fichier CSV local de secours.")
+
     if data.empty:
         if source_error is not None:
             show_error("Impossible de charger ou traiter les données de recherche depuis Supabase et aucun CSV local exploitable n'est disponible.", source_error)
@@ -923,52 +925,163 @@ elif page == "📊 Research Analytics":
             st.info("Aucune donnée disponible. Ajoutez des observations dans Research Data.")
     else:
         if "product_category" in data.columns:
-            categories = ["Toutes les catégories"] + sorted(_safe_text_series(data["product_category"].dropna()).unique().tolist())
+            category_values = _safe_text_series(data["product_category"]).str.strip()
+            categories = ["Toutes les catégories"] + sorted([v for v in category_values.unique().tolist() if v])
             selected_category = st.selectbox("Filtrer par catégorie", categories)
             if selected_category != "Toutes les catégories":
-                data = data[_safe_text_series(data["product_category"]) == selected_category]
+                data = data[category_values == selected_category]
         if "product_name" in data.columns:
-            products = ["Tous les produits"] + sorted(_safe_text_series(data["product_name"].dropna()).unique().tolist())
+            product_values = _safe_text_series(data["product_name"]).str.strip()
+            products = ["Tous les produits"] + sorted([v for v in product_values.unique().tolist() if v])
             selected_product = st.selectbox("Filtrer par produit", products)
             if selected_product != "Tous les produits":
-                data = data[_safe_text_series(data["product_name"]) == selected_product]
+                data = data[product_values == selected_product]
+
         st.divider()
         total = len(data)
-        label_series = data.get("expert_risk_label", pd.Series(index=data.index, dtype="object"))
-        assigned = _safe_text_series(label_series.dropna()).str.strip()
-        risk_count = int(assigned.isin(["Faible", "Modéré", "Élevé"]).sum())
-        salm = _safe_text_series(data.get("salmonella_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
-        salm_valid = ~salm.isin(["", "nan", "none", "non analysée", "non analysé", "non renseigné"])
-        nonconf = _safe_text_series(data.get("nonconformity_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
-        nonconf_valid = ~nonconf.isin(["", "nan", "none", "non évaluée", "non évalué", "non renseigné"])
-        srate = (salm[salm_valid].isin(["détectée", "detectee", "oui", "true", "positive"]).mean() * 100) if salm_valid.any() else None
-        nrate = (nonconf[nonconf_valid].isin(["oui", "true", "non conforme", "non-conforme"]).mean() * 100) if nonconf_valid.any() else None
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Observations", total)
-        k2.metric("Labels experts renseignés", f"{risk_count}/{total}")
-        k3.metric("Salmonella détectée", "N/D" if srate is None else f"{srate:.1f}%")
-        k4.metric("Non-conformités", "N/D" if nrate is None else f"{nrate:.1f}%")
-        if risk_count:
-            st.subheader("Distribution des labels experts")
-            dist = assigned[assigned.isin(["Faible", "Modéré", "Élevé"])].value_counts().reindex(["Faible", "Modéré", "Élevé"], fill_value=0)
-            st.bar_chart(dist)
-        st.subheader("Statistiques descriptives des paramètres numériques")
-        excluded = {"id"}
-        numeric_data = data.drop(columns=[c for c in excluded if c in data.columns]).apply(pd.to_numeric, errors="coerce")
-        numeric_cols = [c for c in numeric_data.columns if numeric_data[c].notna().any()]
-        if numeric_cols:
-            stats = numeric_data[numeric_cols].describe().T[["count", "mean", "50%", "min", "max"]].rename(columns={"50%": "median"}).round(3)
-            st.dataframe(stats, use_container_width=True)
+        if total == 0:
+            st.info("Aucune observation ne correspond aux filtres sélectionnés.")
         else:
-            st.info("Aucune mesure numérique disponible pour les filtres sélectionnés.")
-        st.subheader("Complétude des données")
-        missing_rows = []
-        for col in data.columns:
-            available_count = int(data[col].notna().sum())
-            missing_rows.append({"Variable": col, "Renseignées": available_count, "Manquantes": total - available_count, "Complétude (%)": round(available_count / total * 100, 1) if total else 0})
-        missing_df = pd.DataFrame(missing_rows).sort_values("Complétude (%)")
-        st.dataframe(missing_df, use_container_width=True, hide_index=True)
-        st.info("Un taux de complétude élevé ne prouve ni la conformité ni l'innocuité alimentaire. Les mesures doivent être interprétées avec leurs unités, méthodes, matrices et limites applicables.")
+            def _normalise_label(value):
+                text = "" if _is_missing_or_blank(value) else str(value).strip().casefold()
+                return {
+                    "faible": "Faible", "low": "Faible",
+                    "modere": "Modéré", "modéré": "Modéré", "moderate": "Modéré", "medium": "Modéré",
+                    "eleve": "Élevé", "élevé": "Élevé", "high": "Élevé",
+                }.get(text, "")
+
+            def _state_of_value(value):
+                """Classify a cell without interpreting untested results as negative."""
+                if _is_missing_or_blank(value):
+                    return "Manquante"
+                if isinstance(value, (dict, list, tuple)) and len(value) == 0:
+                    return "Manquante"
+                if isinstance(value, str):
+                    token = value.strip().casefold()
+                    not_applicable = {"n/a", "na", "non applicable", "not applicable", "sans objet"}
+                    not_tested = {"non analysé", "non analysee", "non analysée", "non testé", "non testée", "not tested", "not tested / non analysé"}
+                    if token in not_applicable:
+                        return "Non applicable"
+                    if token in not_tested:
+                        return "Non testé"
+                    if token in {"", "non renseigné", "non renseignee", "non attribué", "non attribue"}:
+                        return "Manquante"
+                return "Renseignée"
+
+            label_raw = data.get("expert_risk_label", pd.Series(index=data.index, dtype="object"))
+            labels = label_raw.map(_normalise_label)
+            valid_labels = labels[labels.isin(["Faible", "Modéré", "Élevé"])]
+            risk_count = int(len(valid_labels))
+
+            salm = _safe_text_series(data.get("salmonella_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
+            salm_unknown = {"", "nan", "none", "non analysée", "non analysé", "non testé", "non testée", "not tested", "non renseigné", "n/a", "non applicable"}
+            salm_valid = ~salm.isin(salm_unknown)
+            salm_positive = {"détectée", "detectee", "oui", "true", "positive", "1"}
+            srate = float(salm[salm_valid].isin(salm_positive).mean() * 100) if salm_valid.any() else None
+
+            nonconf = _safe_text_series(data.get("nonconformity_detected", pd.Series(index=data.index, dtype="object"))).str.strip().str.casefold()
+            nonconf_unknown = {"", "nan", "none", "non évaluée", "non evaluee", "non évalué", "non évalué", "non testé", "not tested", "non renseigné", "n/a", "non applicable"}
+            nonconf_valid = ~nonconf.isin(nonconf_unknown)
+            nonconf_positive = {"oui", "true", "non conforme", "non-conforme", "1"}
+            nrate = float(nonconf[nonconf_valid].isin(nonconf_positive).mean() * 100) if nonconf_valid.any() else None
+
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Observations", total)
+            k2.metric("Labels experts renseignés", f"{risk_count}/{total}")
+            k3.metric("Salmonella détectée", "N/D" if srate is None else f"{srate:.1f}%", help=f"Calculé sur {int(salm_valid.sum())} résultats interprétables, pas sur les tests non réalisés.")
+            k4.metric("Non-conformités", "N/D" if nrate is None else f"{nrate:.1f}%", help=f"Calculé sur {int(nonconf_valid.sum())} évaluations renseignées.")
+
+            st.subheader("Distribution des labels experts")
+            if risk_count:
+                label_order = ["Faible", "Modéré", "Élevé"]
+                dist = valid_labels.value_counts().reindex(label_order, fill_value=0).astype(int)
+                dist_df = dist.rename_axis("Label expert").reset_index(name="Nombre d'observations")
+                chart_col, table_col = st.columns([2, 1])
+                with chart_col:
+                    st.bar_chart(dist_df.set_index("Label expert"), horizontal=True)
+                with table_col:
+                    st.dataframe(dist_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("Aucun label expert attribué pour les observations filtrées. Les labels manquants ne sont pas assimilés à un risque faible.")
+
+            st.subheader("Statistiques descriptives des paramètres numériques")
+            numeric_candidates = [
+                "temperature_celsius", "storage_days", "ph", "humidity_percent", "moisture_percent",
+                "dry_matter_percent", "ash_percent", "protein_percent", "fat_percent",
+                "titratable_acidity", "density", "conductivity", "viscosity", "brix", "salt_percent",
+                "particle_size", "total_viable_count", "enterobacteriaceae_count", "coliform_count",
+                "e_coli_count", "yeast_mould_count", "staphylococcus_aureus_count", "bacillus_count",
+                "lead", "cadmium", "mercury", "arsenic", "aflatoxin", "mycotoxin", "pesticide_residue",
+            ]
+            available_numeric = [column for column in numeric_candidates if column in data.columns]
+            if available_numeric:
+                numeric_data = data[available_numeric].apply(pd.to_numeric, errors="coerce")
+                numeric_cols = [column for column in available_numeric if numeric_data[column].notna().any()]
+                if numeric_cols:
+                    stats = numeric_data[numeric_cols].describe().T[["count", "mean", "50%", "min", "max"]]
+                    stats = stats.rename(columns={"count": "n mesures", "50%": "médiane", "mean": "moyenne", "min": "minimum", "max": "maximum"}).round(3)
+                    stats["n mesures"] = stats["n mesures"].astype(int)
+                    st.dataframe(stats, use_container_width=True)
+                else:
+                    st.info("Aucune mesure numérique exploitable pour les filtres sélectionnés.")
+            else:
+                st.info("Aucun paramètre numérique reconnu n'est disponible pour les filtres sélectionnés.")
+
+            st.subheader("Complétude et statut des données")
+            # Each field is classified independently. A blank is missing; an explicit
+            # 'not tested' or 'not applicable' value remains a distinct state.
+            field_groups = {
+                "Traçabilité": ["sample_reference", "supplier", "sampling_date", "analysis_date", "laboratory", "analyst"],
+                "Physico-chimique": ["temperature_celsius", "storage_days", "ph", "humidity_percent", "moisture_percent", "dry_matter_percent", "ash_percent", "protein_percent", "fat_percent", "titratable_acidity", "density", "conductivity", "viscosity", "brix", "salt_percent", "particle_size"],
+                "Microbiologique": ["total_viable_count", "enterobacteriaceae_count", "coliform_count", "e_coli_count", "yeast_mould_count", "staphylococcus_aureus_count", "bacillus_count", "salmonella_detected"],
+                "Contaminants": ["pesticide_residue", "lead", "cadmium", "mercury", "arsenic", "aflatoxin", "mycotoxin"],
+                "Méthodes et références": ["analysis_units", "analysis_methods", "applicable_limits_reference"],
+                "Processus et sensoriel": ["cold_chain_broken", "hygiene_controlled", "pasteurized", "sensory_status", "nonconformity_detected", "expert_risk_label"],
+                "Emballage": ["packaging_integrity", "packaging_results"],
+            }
+            completeness_rows = []
+            for group_name, fields in field_groups.items():
+                for field in fields:
+                    if field not in data.columns:
+                        continue
+                    states = data[field].map(_state_of_value)
+                    counts = states.value_counts()
+                    filled = int(counts.get("Renseignée", 0))
+                    not_tested = int(counts.get("Non testé", 0))
+                    not_applicable = int(counts.get("Non applicable", 0))
+                    missing = int(counts.get("Manquante", 0))
+                    applicable_total = total - not_applicable
+                    completeness = (filled / applicable_total * 100) if applicable_total else None
+                    completeness_rows.append({
+                        "Domaine": group_name,
+                        "Variable": field,
+                        "Renseignées": filled,
+                        "Non testées": not_tested,
+                        "Non applicables": not_applicable,
+                        "Manquantes": missing,
+                        "Complétude (%)": "N/D" if completeness is None else round(completeness, 1),
+                    })
+            if completeness_rows:
+                completeness_df = pd.DataFrame(completeness_rows)
+                st.dataframe(completeness_df, use_container_width=True, hide_index=True)
+                domain_rows = []
+                for domain, group in completeness_df.groupby("Domaine", sort=False):
+                    applicable = total - int(group["Non applicables"].max()) if len(group) else total
+                    present = int(group["Renseignées"].sum())
+                    possible = len(group) * total - int(group["Non applicables"].sum())
+                    domain_rows.append({
+                        "Domaine": domain,
+                        "Champs suivis": len(group),
+                        "Valeurs renseignées": present,
+                        "Valeurs attendues": possible,
+                        "Complétude globale (%)": round(present / possible * 100, 1) if possible else None,
+                    })
+                st.caption("Synthèse par domaine (la complétude mesure la présence des données, pas leur conformité).")
+                st.dataframe(pd.DataFrame(domain_rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("Aucun champ de qualité reconnu n'est disponible dans les observations filtrées.")
+
+            st.info("Important : 'Non testé', 'Non applicable' et 'Manquante' sont des états distincts. Une absence de résultat microbiologique ne signifie jamais 'non détecté'. La complétude ne prouve ni la conformité ni l'innocuité alimentaire.")
 
 
 # =====================================================
