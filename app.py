@@ -5,6 +5,7 @@ import re
 
 from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
+from foodnexa_cleaning_engine import clean_research_dataset
 from foodnexa_supabase import (
     save_risk_assessment,
     save_research_observation,
@@ -424,7 +425,7 @@ with st.sidebar:
     st.divider()
     page = st.radio("Navigation", [
         "📊 Dashboard", "🔬 Nouvelle analyse", "🧪 Research Data",
-        "📊 Research Analytics", "📁 Historique", "🧬 Research Prototype"
+        "📊 Research Analytics", "🧹 Scientific Data Cleaning", "📁 Historique", "🧬 Research Prototype"
     ])
     st.divider()
     st.info("Current research case:\n\n🥛 Lait pasteurisé")
@@ -1082,6 +1083,73 @@ elif page == "📊 Research Analytics":
                 st.info("Aucun champ de qualité reconnu n'est disponible dans les observations filtrées.")
 
             st.info("Important : 'Non testé', 'Non applicable' et 'Manquante' sont des états distincts. Une absence de résultat microbiologique ne signifie jamais 'non détecté'. La complétude ne prouve ni la conformité ni l'innocuité alimentaire.")
+
+
+# =====================================================
+# SCIENTIFIC DATA CLEANING ENGINE
+# =====================================================
+
+elif page == "🧹 Scientific Data Cleaning":
+    st.title("🧹 FOODNEXA Scientific Data Cleaning Engine V1")
+    st.write("Prétraitement scientifique non destructif des observations avant les analyses avancées et le Machine Learning.")
+    st.warning("Le moteur crée une copie de travail. Les données originales dans Supabase et le CSV source ne sont jamais modifiés.")
+
+    cleaning_source, cleaning_source_name, cleaning_source_error = load_research_analytics_data()
+    if cleaning_source_error is not None and cleaning_source_name == "Aucune source":
+        show_error("Impossible de charger les observations pour le nettoyage.", cleaning_source_error)
+    elif cleaning_source.empty:
+        st.info("Aucune observation disponible. Ajoutez d'abord des données dans Research Data.")
+    else:
+        st.caption(f"Source : {cleaning_source_name} | Observations originales : {len(cleaning_source)}")
+        cleaned_data, cleaning_audit, cleaning_summary = clean_research_dataset(cleaning_source)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Observations", cleaning_summary["rows_input"])
+        m2.metric("Lignes à vérifier", cleaning_summary["rows_flagged"])
+        m3.metric("Événements d'audit", cleaning_summary["audit_events"])
+        m4.metric("Doublons détectés", cleaning_summary["duplicate_rows_flagged"])
+
+        st.subheader("1. Règles de prétraitement")
+        st.markdown("""
+        - Nettoyage des espaces et harmonisation des cellules textuelles vides.
+        - Conversion numérique des paramètres reconnus, sans remplacer les valeurs absentes par zéro.
+        - Vérification de plages techniques générales et signalement des valeurs atypiques.
+        - Détection statistique IQR lorsque l'effectif le permet (au moins 4 mesures).
+        - Détection des doublons exacts sans suppression automatique.
+        - Conversion d'unité uniquement si l'unité est explicitement fournie et qu'une règle sûre existe.
+        """)
+        st.info("Les plages sont des contrôles de plausibilité exploratoires, pas des limites réglementaires ni des critères de libération produit. Les valeurs signalées restent conservées pour vérification humaine.")
+
+        st.subheader("2. Aperçu du dataset préparé")
+        st.dataframe(cleaned_data, use_container_width=True, hide_index=True)
+        st.download_button(
+            "⬇️ Télécharger le dataset prétraité (CSV)",
+            data=cleaned_data.to_csv(index=False).encode("utf-8-sig"),
+            file_name="foodnexa_cleaned_research_dataset.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+        st.subheader("3. Audit trail — historique des opérations")
+        if cleaning_audit.empty:
+            st.success("Aucune transformation ou anomalie nécessitant un événement d'audit n'a été détectée.")
+        else:
+            st.dataframe(cleaning_audit, use_container_width=True, hide_index=True)
+            st.download_button(
+                "⬇️ Télécharger le journal d'audit (CSV)",
+                data=cleaning_audit.to_csv(index=False).encode("utf-8-sig"),
+                file_name="foodnexa_cleaning_audit.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        st.subheader("4. Garanties d'intégrité")
+        g1, g2, g3 = st.columns(3)
+        g1.metric("Suppression automatique", "Non")
+        g2.metric("Imputation automatique", "Non")
+        g3.metric("Source originale", "Préservée")
+        st.caption(f"Cellules manquantes conservées dans la copie de travail : {cleaning_summary['missing_cells_retained']}. Aucune ligne n'est supprimée automatiquement.")
+
 
 
 # =====================================================
