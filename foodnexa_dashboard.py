@@ -10,8 +10,6 @@ import streamlit as st
 # =====================================================
 
 def _prepare_df(data):
-    """Convert input safely into a DataFrame."""
-
     if data is None:
         return pd.DataFrame()
 
@@ -25,8 +23,6 @@ def _prepare_df(data):
 
 
 def _is_missing(value):
-    """Safe missing-value detection for mixed data."""
-
     if value is None:
         return True
 
@@ -40,8 +36,8 @@ def _is_missing(value):
 
     try:
         result = pd.isna(value)
-        if isinstance(result, bool):
-            return result
+        if isinstance(result, (bool, type(pd.NA))):
+            return bool(result)
     except (TypeError, ValueError):
         pass
 
@@ -52,15 +48,18 @@ def _safe_string(value):
     if _is_missing(value):
         return ""
 
-    if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False, default=str)
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str
+        )
 
     return str(value).strip()
 
 
 def _find_column(df, candidates):
-    """Find the first available column."""
-
     if df is None or df.empty:
         return None
 
@@ -71,7 +70,6 @@ def _find_column(df, candidates):
 
     for candidate in candidates:
         found = normalized.get(candidate.casefold())
-
         if found is not None:
             return found
 
@@ -79,14 +77,24 @@ def _find_column(df, candidates):
 
 
 def _numeric_column(df, candidates):
-    """Return numeric values from the first matching column."""
-
     column = _find_column(df, candidates)
 
     if column is None:
         return pd.Series(dtype="float64")
 
-    return pd.to_numeric(df[column], errors="coerce").dropna()
+    values = df[column].map(
+        lambda value: (
+            value if isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            else value if isinstance(value, str)
+            else None
+        )
+    )
+
+    return pd.to_numeric(
+        values,
+        errors="coerce"
+    ).dropna()
 
 
 def _count_unique(df, candidates):
@@ -101,25 +109,7 @@ def _count_unique(df, candidates):
     return int(values.nunique())
 
 
-def _format_number(value, decimals=1):
-    try:
-        number = float(value)
-
-        if not math.isfinite(number):
-            return "N/D"
-
-        if number.is_integer():
-            return str(int(number))
-
-        return f"{number:.{decimals}f}"
-
-    except (TypeError, ValueError):
-        return "N/D"
-
-
 def _risk_category(value):
-    """Normalize risk labels."""
-
     text = _safe_string(value).casefold()
 
     mapping = {
@@ -146,16 +136,11 @@ def _kpi_card(label, value, help_text=None):
 
 
 # =====================================================
-# SAFE DUPLICATE DETECTION
+# SAFE VALUE NORMALIZATION
 # =====================================================
 
 def _make_hashable(value):
-    """
-    Convert nested JSON values into stable strings.
-
-    This prevents errors when Supabase JSONB columns contain
-    dictionaries or lists.
-    """
+    """Convert nested values into stable representations."""
 
     if isinstance(value, dict):
         return json.dumps(
@@ -172,36 +157,54 @@ def _make_hashable(value):
             default=str
         )
 
-    if _is_missing(value):
+    if value is None:
         return None
 
     if isinstance(value, (pd.Timestamp,)):
         return value.isoformat()
 
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+
     return str(value)
 
 
+# =====================================================
+# SAFE DUPLICATE DETECTION
+# =====================================================
+
 def _count_duplicates_safely(df):
     """
-    Detect exact duplicates without calling DataFrame.duplicated()
-    on columns containing dictionaries or lists.
+    Count exact duplicate rows without using pandas duplicated().
+    Supports dictionaries, lists and JSONB values.
     """
 
     if df is None or df.empty:
         return 0
 
-    try:
-        normalized = df.copy()
+    seen = set()
+    duplicate_count = 0
 
-        for column in normalized.columns:
-            normalized[column] = normalized[column].map(
-                _make_hashable
+    for row in df.itertuples(index=False, name=None):
+
+        try:
+            normalized_row = tuple(
+                _make_hashable(value)
+                for value in row
             )
 
-        return int(normalized.duplicated().sum())
+            if normalized_row in seen:
+                duplicate_count += 1
+            else:
+                seen.add(normalized_row)
 
-    except Exception:
-        return 0
+        except Exception:
+            continue
+
+    return duplicate_count
 
 
 # =====================================================
@@ -209,8 +212,6 @@ def _count_duplicates_safely(df):
 # =====================================================
 
 def _quality_issues(df):
-    """Generate basic quality alerts safely."""
-
     issues = []
 
     if df is None or df.empty:
@@ -242,13 +243,13 @@ def _quality_issues(df):
                 "Count": missing_count,
             })
 
-    duplicates = _count_duplicates_safely(df)
+    duplicate_count = _count_duplicates_safely(df)
 
-    if duplicates:
+    if duplicate_count:
         issues.append({
             "Issue": "Doublons exacts détectés",
             "Priority": "À vérifier",
-            "Count": duplicates,
+            "Count": duplicate_count,
         })
 
     numeric_fields = [
@@ -276,11 +277,13 @@ def _quality_issues(df):
 
         invalid = present & converted.isna()
 
-        if int(invalid.sum()):
+        invalid_count = int(invalid.sum())
+
+        if invalid_count:
             issues.append({
                 "Issue": f"Valeurs numériques invalides : {field}",
                 "Priority": "Contrôle technique",
-                "Count": int(invalid.sum()),
+                "Count": invalid_count,
             })
 
     return issues
@@ -342,22 +345,86 @@ def _recent_activity(history, research):
 
     result = pd.DataFrame(records)
 
-    if "Date" in result.columns:
-        result["_sort_date"] = pd.to_datetime(
-            result["Date"],
-            errors="coerce",
-            utc=True
-        )
+    result["_sort_date"] = pd.to_datetime(
+        result["Date"],
+        errors="coerce",
+        utc=True
+    )
 
-        result = result.sort_values(
-            "_sort_date",
-            ascending=False,
-            na_position="last"
-        )
+    result = result.sort_values(
+        "_sort_date",
+        ascending=False,
+        na_position="last"
+    )
 
-        result = result.drop(columns=["_sort_date"])
+    result = result.drop(columns=["_sort_date"])
 
     return result.head(10).reset_index(drop=True)
+
+
+# =====================================================
+# RISK SCORE EVOLUTION - SAFE VERSION
+# =====================================================
+
+def _render_risk_evolution(history, risk_score_column):
+
+    if history.empty or risk_score_column is None:
+        st.info(
+            "Les données d'évolution ne sont pas encore disponibles."
+        )
+        return
+
+    batch_column = _find_column(
+        history,
+        ["batch_id"]
+    )
+
+    if batch_column is None:
+        st.info(
+            "Identifiants des lots indisponibles."
+        )
+        return
+
+    # Read columns separately to avoid pandas selection
+    # problems when source data contains nested JSON values.
+    batch_values = history[batch_column].map(_safe_string)
+
+    risk_values = pd.to_numeric(
+        history[risk_score_column],
+        errors="coerce"
+    )
+
+    chart_data = pd.DataFrame({
+        "Lot": batch_values,
+        "Risk Score": risk_values,
+    })
+
+    chart_data = chart_data[
+        (chart_data["Lot"] != "")
+        & chart_data["Risk Score"].notna()
+    ]
+
+    if chart_data.empty:
+        st.info(
+            "Aucun Risk Score numérique disponible."
+        )
+        return
+
+    chart_data = chart_data.tail(30)
+
+    # Make labels unique for chart display.
+    chart_data = chart_data.reset_index(drop=True)
+
+    chart_data["Lot affiché"] = [
+        f"{lot} ({index + 1})"
+        for index, lot in enumerate(chart_data["Lot"])
+    ]
+
+    chart_data = chart_data.set_index("Lot affiché")
+
+    st.line_chart(
+        chart_data[["Risk Score"]]
+    )
 
 
 # =====================================================
@@ -429,12 +496,19 @@ def render_dashboard(
     quality_score = None
 
     if isinstance(quality_report, dict):
+
         try:
-            quality_score = float(
-                quality_report.get("quality_score")
+            raw_quality_score = quality_report.get(
+                "quality_score"
             )
 
-            if not math.isfinite(quality_score):
+            if raw_quality_score is not None:
+                quality_score = float(raw_quality_score)
+
+            if (
+                quality_score is not None
+                and not math.isfinite(quality_score)
+            ):
                 quality_score = None
 
         except (TypeError, ValueError):
@@ -538,56 +612,10 @@ def render_dashboard(
 
         st.markdown("**Risk Score Evolution**")
 
-        if (
-            not history.empty
-            and risk_score_column is not None
-        ):
-
-            evolution = history.copy()
-
-            evolution["_risk_score"] = pd.to_numeric(
-                evolution[risk_score_column],
-                errors="coerce"
-            )
-
-            batch_column = _find_column(
-                evolution,
-                ["batch_id"]
-            )
-
-            if batch_column is not None:
-
-                evolution = evolution[
-                    [batch_column, "_risk_score"]
-                ].dropna()
-
-                if not evolution.empty:
-
-                    evolution = evolution.tail(30)
-
-                    evolution = evolution.set_index(
-                        batch_column
-                    )
-
-                    st.line_chart(
-                        evolution,
-                        y="_risk_score"
-                    )
-
-                else:
-                    st.info(
-                        "Aucun Risk Score numérique disponible."
-                    )
-
-            else:
-                st.info(
-                    "Identifiants des lots indisponibles."
-                )
-
-        else:
-            st.info(
-                "Les données d'évolution ne sont pas encore disponibles."
-            )
+        _render_risk_evolution(
+            history,
+            risk_score_column
+        )
 
     st.divider()
 
@@ -642,7 +670,9 @@ def render_dashboard(
 
             if not categories.empty:
 
-                st.markdown("**Observations par catégorie de produit**")
+                st.markdown(
+                    "**Observations par catégorie de produit**"
+                )
 
                 category_df = categories.rename_axis(
                     "Catégorie"
@@ -680,29 +710,39 @@ def render_dashboard(
             for issue in report_issues[:20]:
 
                 if isinstance(issue, dict):
+
                     issues.append({
                         "Issue": _safe_string(
                             issue.get(
                                 "issue",
                                 issue.get(
                                     "message",
-                                    issue.get("type", "Anomalie détectée")
+                                    issue.get(
+                                        "type",
+                                        "Anomalie détectée"
+                                    )
                                 )
                             )
                         ),
                         "Priority": _safe_string(
                             issue.get(
                                 "priority",
-                                issue.get("severity", "À vérifier")
+                                issue.get(
+                                    "severity",
+                                    "À vérifier"
+                                )
                             )
                         ),
-                        "Count": issue.get(
-                            "count",
-                            issue.get("row", "—")
+                        "Count": _safe_string(
+                            issue.get(
+                                "count",
+                                issue.get("row", "—")
+                            )
                         ),
                     })
 
                 else:
+
                     issues.append({
                         "Issue": _safe_string(issue),
                         "Priority": "À vérifier",
@@ -713,10 +753,9 @@ def render_dashboard(
 
         issue_df = pd.DataFrame(issues)
 
-        if "Issue" in issue_df.columns:
-            issue_df = issue_df.drop_duplicates(
-                subset=["Issue", "Priority", "Count"]
-            )
+        issue_df = issue_df.drop_duplicates(
+            subset=["Issue", "Priority", "Count"]
+        )
 
         st.warning(
             f"{len(issue_df)} signalement(s) à examiner."
@@ -805,16 +844,19 @@ def render_dashboard(
             with column:
 
                 if status is True:
+
                     st.success(
                         f"**{name}**\n\nDisponible / données présentes"
                     )
 
                 elif status is False:
+
                     st.warning(
                         f"**{name}**\n\nNon disponible / données absentes"
                     )
 
                 else:
+
                     st.info(
                         f"**{name}**\n\nStatut non confirmé"
                     )
