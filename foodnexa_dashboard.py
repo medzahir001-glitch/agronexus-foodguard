@@ -1,306 +1,368 @@
 
-"""
-FOODNEXA - Enterprise Dashboard V1
-Food Safety / Risk Intelligence
-
-Independent dashboard module.
-Original CSV and Supabase data are read only.
-"""
-
-import streamlit as st
+import json
+import math
 import pandas as pd
-import numpy as np
+import streamlit as st
 
 
-# =========================================================
-# CONFIGURATION
-# =========================================================
-
-NAVY = "#102B46"
-BLUE = "#087E9B"
-GREEN = "#16A078"
-ORANGE = "#E69A32"
-RED = "#D9534F"
-GREY = "#718096"
-
-
-# =========================================================
-# DATA HELPERS
-# =========================================================
+# =====================================================
+# FOODNEXA DASHBOARD - ENTERPRISE EDITION
+# =====================================================
 
 def _prepare_df(data):
+    """Convert input safely into a DataFrame."""
+
+    if data is None:
+        return pd.DataFrame()
+
     if isinstance(data, pd.DataFrame):
         return data.copy()
 
-    if isinstance(data, list):
+    try:
         return pd.DataFrame(data)
+    except Exception:
+        return pd.DataFrame()
 
-    if isinstance(data, dict):
-        return pd.DataFrame(data)
 
-    return pd.DataFrame()
+def _is_missing(value):
+    """Safe missing-value detection for mixed data."""
+
+    if value is None:
+        return True
+
+    if isinstance(value, str):
+        return value.strip().casefold() in {
+            "", "nan", "none", "null"
+        }
+
+    if isinstance(value, (dict, list, tuple)):
+        return len(value) == 0
+
+    try:
+        result = pd.isna(value)
+        if isinstance(result, bool):
+            return result
+    except (TypeError, ValueError):
+        pass
+
+    return False
+
+
+def _safe_string(value):
+    if _is_missing(value):
+        return ""
+
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+
+    return str(value).strip()
 
 
 def _find_column(df, candidates):
-    if df.empty:
+    """Find the first available column."""
+
+    if df is None or df.empty:
         return None
 
     normalized = {
-        str(col).strip().lower().replace(" ", "_"): col
-        for col in df.columns
+        str(column).strip().casefold(): column
+        for column in df.columns
     }
 
     for candidate in candidates:
-        key = candidate.lower().replace(" ", "_")
-        if key in normalized:
-            return normalized[key]
+        found = normalized.get(candidate.casefold())
+
+        if found is not None:
+            return found
 
     return None
 
 
 def _numeric_column(df, candidates):
-    col = _find_column(df, candidates)
+    """Return numeric values from the first matching column."""
 
-    if col is None:
-        return pd.Series(dtype=float)
+    column = _find_column(df, candidates)
 
-    return pd.to_numeric(df[col], errors="coerce")
+    if column is None:
+        return pd.Series(dtype="float64")
+
+    return pd.to_numeric(df[column], errors="coerce").dropna()
 
 
 def _count_unique(df, candidates):
-    col = _find_column(df, candidates)
+    column = _find_column(df, candidates)
 
-    if col is None or df.empty:
+    if column is None:
         return 0
 
-    return int(df[col].nunique())
+    values = df[column].map(_safe_string)
+    values = values[values != ""]
+
+    return int(values.nunique())
 
 
-def _format_number(value):
+def _format_number(value, decimals=1):
     try:
-        return f"{int(value):,}".replace(",", " ")
-    except Exception:
-        return "0"
+        number = float(value)
+
+        if not math.isfinite(number):
+            return "N/D"
+
+        if number.is_integer():
+            return str(int(number))
+
+        return f"{number:.{decimals}f}"
+
+    except (TypeError, ValueError):
+        return "N/D"
 
 
 def _risk_category(value):
-    if pd.isna(value):
-        return "Non classé"
+    """Normalize risk labels."""
 
-    if isinstance(value, str):
-        text = value.strip().lower()
+    text = _safe_string(value).casefold()
 
-        if any(word in text for word in ["élev", "high", "critique", "critical"]):
-            return "Élevé"
+    mapping = {
+        "faible": "Faible",
+        "low": "Faible",
+        "modéré": "Modéré",
+        "modere": "Modéré",
+        "moderate": "Modéré",
+        "medium": "Modéré",
+        "élevé": "Élevé",
+        "eleve": "Élevé",
+        "high": "Élevé",
+    }
 
-        if any(word in text for word in ["modér", "medium", "moderate", "moyen"]):
-            return "Modéré"
-
-        if any(word in text for word in ["faible", "low", "bas"]):
-            return "Faible"
-
-        return "Non classé"
-
-    try:
-        score = float(value)
-
-        if score >= 70:
-            return "Élevé"
-        elif score >= 35:
-            return "Modéré"
-        else:
-            return "Faible"
-
-    except Exception:
-        return "Non classé"
+    return mapping.get(text)
 
 
-# =========================================================
-# KPI COMPONENT
-# =========================================================
-
-def _kpi_card(label, value, subtitle, color=BLUE):
-    st.markdown(
-        f"""
-        <div style="
-            background:#FFFFFF;
-            border:1px solid #E4EAF0;
-            border-left:4px solid {color};
-            border-radius:10px;
-            padding:17px 19px;
-            min-height:112px;
-            box-shadow:0 2px 8px rgba(16,43,70,0.04);
-        ">
-            <div style="
-                color:#64748B;
-                font-size:12px;
-                font-weight:600;
-                margin-bottom:9px;
-            ">{label}</div>
-
-            <div style="
-                color:{NAVY};
-                font-size:27px;
-                font-weight:750;
-                line-height:1.2;
-            ">{value}</div>
-
-            <div style="
-                color:#94A3B8;
-                font-size:11px;
-                margin-top:7px;
-            ">{subtitle}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
+def _kpi_card(label, value, help_text=None):
+    st.metric(
+        label=label,
+        value=value,
+        help=help_text
     )
 
 
-# =========================================================
-# DATA QUALITY ANALYSIS
-# =========================================================
+# =====================================================
+# SAFE DUPLICATE DETECTION
+# =====================================================
 
-def _quality_issues(df):
-    issues = []
+def _make_hashable(value):
+    """
+    Convert nested JSON values into stable strings.
 
-    if df.empty:
-        return issues
+    This prevents errors when Supabase JSONB columns contain
+    dictionaries or lists.
+    """
 
-    total = len(df)
+    if isinstance(value, dict):
+        return json.dumps(
+            value,
+            sort_keys=True,
+            ensure_ascii=False,
+            default=str
+        )
 
-    identity_candidates = [
-        "batch_id", "sample_reference", "sample_ref",
-        "product_name", "product_category"
-    ]
+    if isinstance(value, (list, tuple)):
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            default=str
+        )
 
-    for candidate in identity_candidates:
-        col = _find_column(df, [candidate])
+    if _is_missing(value):
+        return None
 
-        if col is not None:
-            missing = int(
-                df[col].isna().sum()
-                + df[col].astype(str).str.strip().eq("").sum()
+    if isinstance(value, (pd.Timestamp,)):
+        return value.isoformat()
+
+    return str(value)
+
+
+def _count_duplicates_safely(df):
+    """
+    Detect exact duplicates without calling DataFrame.duplicated()
+    on columns containing dictionaries or lists.
+    """
+
+    if df is None or df.empty:
+        return 0
+
+    try:
+        normalized = df.copy()
+
+        for column in normalized.columns:
+            normalized[column] = normalized[column].map(
+                _make_hashable
             )
 
-            if missing:
-                issues.append({
-                    "Issue": f"Valeurs manquantes : {col}",
-                    "Occurrences": min(missing, total),
-                    "Priority": "À vérifier"
-                })
+        return int(normalized.duplicated().sum())
 
-    duplicate_count = int(df.duplicated().sum())
+    except Exception:
+        return 0
 
-    if duplicate_count:
-        issues.append({
-            "Issue": "Doublons exacts",
-            "Occurrences": duplicate_count,
-            "Priority": "À vérifier"
-        })
 
-    numeric_candidates = [
-        "temperature_celsius",
-        "temperature",
-        "storage_days",
-        "ph",
-        "tvc",
-        "total_viable_count"
+# =====================================================
+# DATA QUALITY MONITORING
+# =====================================================
+
+def _quality_issues(df):
+    """Generate basic quality alerts safely."""
+
+    issues = []
+
+    if df is None or df.empty:
+        return issues
+
+    identity_fields = [
+        ("batch_id", "Identifiant du lot"),
+        ("product_name", "Nom du produit"),
     ]
 
-    for candidate in numeric_candidates:
-        col = _find_column(df, [candidate])
+    for field, label in identity_fields:
 
-        if col is not None:
-            values = pd.to_numeric(df[col], errors="coerce")
-            invalid = int((df[col].notna() & values.isna()).sum())
+        if field not in df.columns:
+            issues.append({
+                "Issue": f"Colonne absente : {label}",
+                "Priority": "À vérifier",
+                "Count": len(df),
+            })
+            continue
 
-            if invalid:
-                issues.append({
-                    "Issue": f"Valeurs non numériques : {col}",
-                    "Occurrences": invalid,
-                    "Priority": "Technique"
-                })
+        missing_count = int(
+            df[field].map(_is_missing).sum()
+        )
+
+        if missing_count:
+            issues.append({
+                "Issue": f"{label} manquant",
+                "Priority": "À vérifier",
+                "Count": missing_count,
+            })
+
+    duplicates = _count_duplicates_safely(df)
+
+    if duplicates:
+        issues.append({
+            "Issue": "Doublons exacts détectés",
+            "Priority": "À vérifier",
+            "Count": duplicates,
+        })
+
+    numeric_fields = [
+        "temperature_celsius",
+        "storage_days",
+        "ph",
+        "total_viable_count",
+        "enterobacteriaceae_count",
+        "coliform_count",
+    ]
+
+    for field in numeric_fields:
+
+        if field not in df.columns:
+            continue
+
+        original = df[field]
+
+        present = ~original.map(_is_missing)
+
+        converted = pd.to_numeric(
+            original,
+            errors="coerce"
+        )
+
+        invalid = present & converted.isna()
+
+        if int(invalid.sum()):
+            issues.append({
+                "Issue": f"Valeurs numériques invalides : {field}",
+                "Priority": "Contrôle technique",
+                "Count": int(invalid.sum()),
+            })
 
     return issues
 
 
-# =========================================================
+# =====================================================
 # RECENT ACTIVITY
-# =========================================================
+# =====================================================
 
 def _recent_activity(history, research):
-    frames = []
 
-    for df, activity_type in [
-        (history, "Analyse de risque"),
-        (research, "Observation recherche")
-    ]:
-        if df.empty:
-            continue
+    records = []
 
-        temp = df.copy()
+    if history is not None and not history.empty:
 
-        date_col = _find_column(
-            temp,
-            ["created_at", "timestamp", "date", "analysis_date", "sampling_date"]
-        )
+        for _, row in history.tail(10).iterrows():
 
-        batch_col = _find_column(
-            temp,
-            ["batch_id", "sample_reference", "sample_ref"]
-        )
+            records.append({
+                "Date": _safe_string(
+                    row.get("analysis_date", "")
+                ),
+                "Type": "Évaluation du risque",
+                "Lot": _safe_string(
+                    row.get("batch_id", "")
+                ),
+                "Produit": _safe_string(
+                    row.get("product_name", "")
+                ),
+                "Résultat": (
+                    _safe_string(row.get("risk_level", ""))
+                    + " — "
+                    + _safe_string(row.get("risk_score", ""))
+                ),
+            })
 
-        product_col = _find_column(
-            temp,
-            ["product_name", "product"]
-        )
+    if research is not None and not research.empty:
 
-        temp["_activity_type"] = activity_type
-        temp["_activity_date"] = (
-            pd.to_datetime(temp[date_col], errors="coerce", utc=True)
-            if date_col else pd.NaT
-        )
+        for _, row in research.tail(10).iterrows():
 
-        temp["_batch"] = (
-            temp[batch_col].astype(str)
-            if batch_col else "Non renseigné"
-        )
+            records.append({
+                "Date": _safe_string(
+                    row.get(
+                        "analysis_date",
+                        row.get("created_at", "")
+                    )
+                ),
+                "Type": "Observation de recherche",
+                "Lot": _safe_string(
+                    row.get("batch_id", "")
+                ),
+                "Produit": _safe_string(
+                    row.get("product_name", "")
+                ),
+                "Résultat": "Observation enregistrée",
+            })
 
-        temp["_product"] = (
-            temp[product_col].astype(str)
-            if product_col else "Non renseigné"
-        )
-
-        frames.append(
-            temp[["_activity_date", "_activity_type", "_batch", "_product"]]
-        )
-
-    if not frames:
+    if not records:
         return pd.DataFrame()
 
-    result = pd.concat(frames, ignore_index=True)
+    result = pd.DataFrame(records)
 
-    result = result.sort_values(
-        "_activity_date",
-        ascending=False,
-        na_position="last"
-    )
+    if "Date" in result.columns:
+        result["_sort_date"] = pd.to_datetime(
+            result["Date"],
+            errors="coerce",
+            utc=True
+        )
 
-    result = result.head(8)
+        result = result.sort_values(
+            "_sort_date",
+            ascending=False,
+            na_position="last"
+        )
 
-    result.columns = [
-        "Date",
-        "Type d'activité",
-        "Lot / Échantillon",
-        "Produit"
-    ]
+        result = result.drop(columns=["_sort_date"])
 
-    return result
+    return result.head(10).reset_index(drop=True)
 
 
-# =========================================================
+# =====================================================
 # MAIN DASHBOARD
-# =========================================================
+# =====================================================
 
 def render_dashboard(
     history_data=None,
@@ -312,381 +374,461 @@ def render_dashboard(
     history = _prepare_df(history_data)
     research = _prepare_df(research_data)
 
-    pipeline_status = pipeline_status or {}
+    st.title("FOODNEXA Intelligence Dashboard")
+
+    st.caption(
+        "Food Safety • Risk Intelligence • Research Data Monitoring"
+    )
 
     st.markdown(
-        f"""
-        <div style="margin-bottom:22px;">
-            <div style="
-                color:{NAVY};
-                font-size:27px;
-                font-weight:800;
-                letter-spacing:-0.5px;
-            ">FOODNEXA | Enterprise Dashboard</div>
-
-            <div style="
-                color:#718096;
-                font-size:13px;
-                margin-top:5px;
-            ">
-                Food Safety • Risk Intelligence • Research Data Analytics
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+        "Vue consolidée des évaluations expérimentales, "
+        "des observations scientifiques et de la qualité des données."
     )
 
-    # -----------------------------------------------------
-    # DATA COUNTS
-    # -----------------------------------------------------
+    st.divider()
 
-    history_count = len(history)
-    research_count = len(research)
+    # -------------------------------------------------
+    # 1. KPI CALCULATIONS
+    # -------------------------------------------------
 
-    risk_col = _find_column(
+    total_assessments = len(history)
+    total_research = len(research)
+
+    risk_column = _find_column(
         history,
-        ["risk_score", "final_risk_score", "risk", "score"]
+        ["risk_level"]
     )
 
-    risk_label_col = _find_column(
+    risk_score_column = _find_column(
         history,
-        ["risk_level", "risk_category", "risk_label", "risk_status"]
+        ["risk_score"]
     )
 
-    risk_values = (
-        pd.to_numeric(history[risk_col], errors="coerce")
-        if risk_col else pd.Series(dtype=float)
+    risk_levels = pd.Series(dtype="object")
+
+    if risk_column is not None:
+        risk_levels = history[risk_column].map(
+            _risk_category
+        )
+
+    high_risk = int((risk_levels == "Élevé").sum())
+    moderate_risk = int((risk_levels == "Modéré").sum())
+    low_risk = int((risk_levels == "Faible").sum())
+
+    risk_scores = _numeric_column(
+        history,
+        ["risk_score"]
     )
-
-    if risk_label_col:
-        risk_labels = history[risk_label_col].apply(_risk_category)
-    elif risk_col:
-        risk_labels = risk_values.apply(_risk_category)
-    else:
-        risk_labels = pd.Series(dtype=str)
-
-    high_risk = int((risk_labels == "Élevé").sum())
-    moderate_risk = int((risk_labels == "Modéré").sum())
-    low_risk = int((risk_labels == "Faible").sum())
 
     average_risk = (
-        float(risk_values.mean())
-        if not risk_values.dropna().empty else None
+        float(risk_scores.mean())
+        if not risk_scores.empty
+        else None
     )
 
-    # -----------------------------------------------------
-    # EXECUTIVE KPIs
-    # -----------------------------------------------------
+    quality_score = None
 
-    st.markdown("### Executive Overview")
+    if isinstance(quality_report, dict):
+        try:
+            quality_score = float(
+                quality_report.get("quality_score")
+            )
 
-    k1, k2, k3, k4, k5 = st.columns(5)
+            if not math.isfinite(quality_score):
+                quality_score = None
+
+        except (TypeError, ValueError):
+            quality_score = None
+
+    # -------------------------------------------------
+    # 2. KPI CARDS
+    # -------------------------------------------------
+
+    st.subheader("Executive Overview")
+
+    k1, k2, k3 = st.columns(3)
 
     with k1:
         _kpi_card(
             "Risk Assessments",
-            _format_number(history_count),
-            "Analyses enregistrées",
-            BLUE
+            total_assessments
         )
 
     with k2:
         _kpi_card(
             "Research Observations",
-            _format_number(research_count),
-            "Données de recherche",
-            GREEN
+            total_research
         )
 
     with k3:
         _kpi_card(
-            "High Risk",
-            _format_number(high_risk),
-            "Analyses classées élevées",
-            RED
+            "Dataset Quality Score",
+            (
+                f"{quality_score:.1f}%"
+                if quality_score is not None
+                else "N/D"
+            ),
+            "Score documentaire calculé par le Data Quality Engine."
         )
+
+    k4, k5, k6 = st.columns(3)
 
     with k4:
         _kpi_card(
-            "Moderate Risk",
-            _format_number(moderate_risk),
-            "Analyses classées modérées",
-            ORANGE
+            "High Risk",
+            high_risk
         )
 
     with k5:
-        risk_display = (
-            f"{average_risk:.1f}/100"
-            if average_risk is not None else "N/D"
+        _kpi_card(
+            "Moderate Risk",
+            moderate_risk
         )
 
+    with k6:
         _kpi_card(
             "Average Risk Score",
-            risk_display,
-            "Sur les scores disponibles",
-            NAVY
+            (
+                f"{average_risk:.1f}/100"
+                if average_risk is not None
+                else "N/D"
+            )
         )
 
-    st.markdown("---")
+    st.divider()
 
-    # -----------------------------------------------------
-    # RISK INTELLIGENCE
-    # -----------------------------------------------------
+    # -------------------------------------------------
+    # 3. RISK INTELLIGENCE
+    # -------------------------------------------------
 
-    st.markdown("### Risk Intelligence")
+    st.subheader("Risk Intelligence Monitoring")
 
-    left, right = st.columns([1, 1])
+    risk_left, risk_right = st.columns(2)
 
-    with left:
-        st.markdown("**Distribution des niveaux de risque**")
+    with risk_left:
 
-        if len(risk_labels):
-            distribution = (
-                risk_labels.value_counts()
-                .reindex(["Faible", "Modéré", "Élevé", "Non classé"])
-                .fillna(0)
-                .astype(int)
+        st.markdown("**Risk Level Distribution**")
+
+        if total_assessments and risk_column is not None:
+
+            distribution = pd.DataFrame({
+                "Risk Level": [
+                    "Faible",
+                    "Modéré",
+                    "Élevé",
+                ],
+                "Observations": [
+                    low_risk,
+                    moderate_risk,
+                    high_risk,
+                ],
+            })
+
+            st.bar_chart(
+                distribution.set_index("Risk Level"),
+                horizontal=True
             )
-
-            distribution = distribution[distribution > 0]
-
-            st.bar_chart(distribution, height=260)
 
         else:
             st.info(
-                "Aucune classification de risque disponible "
-                "dans les données chargées."
+                "Aucune évaluation de risque disponible."
             )
 
-    with right:
-        st.markdown("**Évolution des scores de risque**")
+    with risk_right:
 
-        if risk_col and not history.empty:
-            date_col = _find_column(
-                history,
-                ["created_at", "timestamp", "date", "analysis_date"]
+        st.markdown("**Risk Score Evolution**")
+
+        if (
+            not history.empty
+            and risk_score_column is not None
+        ):
+
+            evolution = history.copy()
+
+            evolution["_risk_score"] = pd.to_numeric(
+                evolution[risk_score_column],
+                errors="coerce"
             )
 
-            batch_col = _find_column(
-                history,
+            batch_column = _find_column(
+                evolution,
                 ["batch_id"]
             )
 
-            trend = pd.DataFrame({
-                "Score": risk_values
-            })
+            if batch_column is not None:
 
-            if date_col:
-                trend["Date"] = pd.to_datetime(
-                    history[date_col], errors="coerce"
-                )
-                trend = trend.dropna(subset=["Date"])
-                trend = trend.sort_values("Date")
-                trend = trend.set_index("Date")
-                st.line_chart(trend[["Score"]], height=260)
+                evolution = evolution[
+                    [batch_column, "_risk_score"]
+                ].dropna()
 
-            elif batch_col:
-                trend["Lot"] = history[batch_col].astype(str).values
-                trend = trend.dropna(subset=["Score"])
-                trend = trend.set_index("Lot")
-                st.line_chart(trend[["Score"]], height=260)
+                if not evolution.empty:
+
+                    evolution = evolution.tail(30)
+
+                    evolution = evolution.set_index(
+                        batch_column
+                    )
+
+                    st.line_chart(
+                        evolution,
+                        y="_risk_score"
+                    )
+
+                else:
+                    st.info(
+                        "Aucun Risk Score numérique disponible."
+                    )
 
             else:
-                st.info("Aucune date ou référence de lot disponible.")
+                st.info(
+                    "Identifiants des lots indisponibles."
+                )
 
         else:
-            st.info("Aucun score numérique disponible.")
+            st.info(
+                "Les données d'évolution ne sont pas encore disponibles."
+            )
 
-    st.markdown("---")
+    st.divider()
 
-    # -----------------------------------------------------
-    # RESEARCH DATA OVERVIEW
-    # -----------------------------------------------------
+    # -------------------------------------------------
+    # 4. RESEARCH DATA OVERVIEW
+    # -------------------------------------------------
 
-    st.markdown("### Research Dataset Overview")
+    st.subheader("Research Dataset Overview")
 
     r1, r2, r3 = st.columns(3)
 
     with r1:
-        product_count = _count_unique(
-            research,
-            ["product_name", "product"]
-        )
-        _kpi_card(
-            "Produits étudiés",
-            _format_number(product_count),
-            "Produits distincts",
-            BLUE
+        st.metric(
+            "Observations",
+            total_research
         )
 
     with r2:
-        category_count = _count_unique(
-            research,
-            ["product_category", "category"]
-        )
-        _kpi_card(
-            "Catégories alimentaires",
-            _format_number(category_count),
-            "Catégories représentées",
-            GREEN
+        st.metric(
+            "Produits distincts",
+            _count_unique(
+                research,
+                ["product_name"]
+            )
         )
 
     with r3:
-        batch_count = _count_unique(
+        st.metric(
+            "Lots distincts",
+            _count_unique(
+                research,
+                ["batch_id"]
+            )
+        )
+
+    if not research.empty:
+
+        category_column = _find_column(
             research,
-            ["batch_id", "sample_reference", "sample_ref"]
-        )
-        _kpi_card(
-            "Lots / Échantillons",
-            _format_number(batch_count),
-            "Identifiants distincts",
-            ORANGE
+            ["product_category"]
         )
 
-    if research.empty:
+        if category_column is not None:
+
+            categories = (
+                research[category_column]
+                .map(_safe_string)
+                .replace("", pd.NA)
+                .dropna()
+                .value_counts()
+            )
+
+            if not categories.empty:
+
+                st.markdown("**Observations par catégorie de produit**")
+
+                category_df = categories.rename_axis(
+                    "Catégorie"
+                ).reset_index(name="Observations")
+
+                st.bar_chart(
+                    category_df.set_index("Catégorie"),
+                    horizontal=True
+                )
+
+    else:
         st.info(
-            "Le Research Dataset ne contient aucune observation "
-            "dans les données actuellement transmises au Dashboard."
+            "Le Research Dataset ne contient pas encore d'observations."
         )
 
-    st.markdown("---")
+    st.divider()
 
-    # -----------------------------------------------------
-    # DATA QUALITY ISSUES
-    # -----------------------------------------------------
+    # -------------------------------------------------
+    # 5. DATA QUALITY MONITORING
+    # -------------------------------------------------
 
-    st.markdown("### Data Quality Monitoring")
+    st.subheader("Data Quality Monitoring")
 
     issues = _quality_issues(research)
 
-    if quality_report is not None:
-        st.caption(
-            "Les indicateurs détaillés du moteur Data Quality "
-            "peuvent être transmis séparément."
+    if isinstance(quality_report, dict):
+
+        report_issues = quality_report.get(
+            "issues",
+            []
         )
 
+        if isinstance(report_issues, list):
+
+            for issue in report_issues[:20]:
+
+                if isinstance(issue, dict):
+                    issues.append({
+                        "Issue": _safe_string(
+                            issue.get(
+                                "issue",
+                                issue.get(
+                                    "message",
+                                    issue.get("type", "Anomalie détectée")
+                                )
+                            )
+                        ),
+                        "Priority": _safe_string(
+                            issue.get(
+                                "priority",
+                                issue.get("severity", "À vérifier")
+                            )
+                        ),
+                        "Count": issue.get(
+                            "count",
+                            issue.get("row", "—")
+                        ),
+                    })
+
+                else:
+                    issues.append({
+                        "Issue": _safe_string(issue),
+                        "Priority": "À vérifier",
+                        "Count": "—",
+                    })
+
     if issues:
+
         issue_df = pd.DataFrame(issues)
+
+        if "Issue" in issue_df.columns:
+            issue_df = issue_df.drop_duplicates(
+                subset=["Issue", "Priority", "Count"]
+            )
+
+        st.warning(
+            f"{len(issue_df)} signalement(s) à examiner."
+        )
+
         st.dataframe(
             issue_df,
-            hide_index=True,
-            width="stretch"
+            use_container_width=True,
+            hide_index=True
         )
+
     else:
+
         if research.empty:
-            st.info("Aucune donnée disponible pour effectuer le contrôle.")
+            st.info(
+                "En attente de données pour le contrôle qualité."
+            )
         else:
             st.success(
-                "Aucun problème détecté par les contrôles simples "
-                "intégrés au Dashboard."
+                "Aucune anomalie détectée par les contrôles "
+                "de base du Dashboard."
             )
 
     st.caption(
-        "Ces contrôles sont indicatifs et ne remplacent pas "
-        "le rapport complet du Data Quality Engine V2."
+        "Les alertes sont des signaux de contrôle documentaire "
+        "et technique. Elles ne constituent pas une décision "
+        "de conformité réglementaire."
     )
 
-    st.markdown("---")
+    st.divider()
 
-    # -----------------------------------------------------
-    # RECENT ACTIVITY
-    # -----------------------------------------------------
+    # -------------------------------------------------
+    # 6. RECENT ACTIVITY
+    # -------------------------------------------------
 
-    st.markdown("### Recent Activity")
+    st.subheader("Recent Activity")
 
-    activity = _recent_activity(history, research)
+    activity = _recent_activity(
+        history,
+        research
+    )
 
-    if not activity.empty:
+    if activity.empty:
+
+        st.info(
+            "Aucune activité enregistrée pour le moment."
+        )
+
+    else:
+
         st.dataframe(
             activity,
-            hide_index=True,
-            width="stretch"
+            use_container_width=True,
+            hide_index=True
         )
-    else:
-        st.info("Aucune activité récente disponible.")
 
-    st.markdown("---")
+    st.divider()
 
-    # -----------------------------------------------------
-    # PIPELINE STATUS
-    # -----------------------------------------------------
+    # -------------------------------------------------
+    # 7. SYSTEM PIPELINE STATUS
+    # -------------------------------------------------
 
-    st.markdown("### FOODNEXA Data Pipeline")
+    st.subheader("FOODNEXA System Pipeline")
 
-    default_status = {
-        "Risk Assessment Engine": history_count > 0,
-        "Research Dataset": research_count > 0,
-        "Data Quality Engine": research_count > 0,
-        "Scientific Data Cleaning": False,
-        "Research Analytics": research_count > 0,
-        "Supabase": None
+    default_pipeline = {
+        "Risk Assessment Engine": True,
+        "Research Dataset": not research.empty,
+        "Data Quality Engine": quality_report is not None,
+        "Scientific Data Cleaning": None,
+        "Research Analytics": not research.empty,
+        "Supabase": None,
     }
 
-    default_status.update(pipeline_status)
+    if isinstance(pipeline_status, dict):
+        default_pipeline.update(pipeline_status)
 
-    pipeline_items = list(default_status.items())
+    pipeline_items = list(default_pipeline.items())
 
-    columns = st.columns(3)
+    for start in range(0, len(pipeline_items), 3):
 
-    for index, (name, status) in enumerate(pipeline_items):
-        with columns[index % 3]:
+        group = pipeline_items[start:start + 3]
+        columns = st.columns(3)
 
-            if status is True:
-                label = "Données disponibles"
-                color = GREEN
-                icon = "●"
+        for column, (name, status) in zip(columns, group):
 
-            elif status is False:
-                label = "Non disponible / non confirmé"
-                color = ORANGE
-                icon = "○"
+            with column:
 
-            else:
-                label = "Statut non vérifié"
-                color = GREY
-                icon = "○"
+                if status is True:
+                    st.success(
+                        f"**{name}**\n\nDisponible / données présentes"
+                    )
 
-            st.markdown(
-                f"""
-                <div style="
-                    border:1px solid #E4EAF0;
-                    border-radius:9px;
-                    background:white;
-                    padding:13px;
-                    margin-bottom:10px;
-                ">
-                    <div style="
-                        font-size:13px;
-                        font-weight:700;
-                        color:{NAVY};
-                    ">{name}</div>
+                elif status is False:
+                    st.warning(
+                        f"**{name}**\n\nNon disponible / données absentes"
+                    )
 
-                    <div style="
-                        color:{color};
-                        font-size:11px;
-                        margin-top:7px;
-                    ">
-                        {icon} {label}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                else:
+                    st.info(
+                        f"**{name}**\n\nStatut non confirmé"
+                    )
 
-    st.markdown(
-        """
-        <div style="
-            margin-top:22px;
-            padding:12px;
-            border-top:1px solid #E4EAF0;
-            color:#718096;
-            font-size:11px;
-            text-align:center;
-        ">
-            FOODNEXA — Experimental Food Safety & Risk Intelligence Platform
-            <br>
-            Decision-support prototype • Not a substitute for accredited laboratory testing
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.divider()
+
+    # -------------------------------------------------
+    # 8. SCIENTIFIC DISCLAIMER
+    # -------------------------------------------------
+
+    st.caption(
+        "FOODNEXA is an experimental Food Safety Risk Intelligence "
+        "prototype. Dashboard indicators support research and "
+        "exploratory monitoring. They do not replace laboratory "
+        "analysis, validated predictive models, expert assessment "
+        "or applicable regulatory requirements."
     )
