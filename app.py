@@ -38,161 +38,145 @@ RESEARCH_COLUMNS = [
 ]
 
 # =====================================================
-# GLOBAL DESIGN
+# GLOBAL DESIGN - FOODNEXA WHITE ENTERPRISE
 # =====================================================
 
 st.markdown("""
 <style>
 :root {
-    --foodnexa-navy: #102B46;
-    --foodnexa-blue: #087E9B;
-    --foodnexa-green: #16A078;
-    --foodnexa-light: #FFFFFF;
-    --foodnexa-white: #FFFFFF;
+    --fnx-navy: #123451;
+    --fnx-blue: #087D9C;
+    --fnx-teal: #0B8F98;
+    --fnx-green: #15966F;
+    --fnx-ink: #1B2D3B;
+    --fnx-muted: #66798A;
+    --fnx-border: #DCE6ED;
+    --fnx-soft: #F4F8FB;
 }
 
+/* GLOBAL CANVAS */
 html, body, [data-testid="stApp"],
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"],
 .main, .block-container {
-    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    color: var(--fnx-ink) !important;
 }
 
 .block-container {
-    max-width: 1450px;
-    padding-top: 1.2rem;
-    padding-bottom: 2.5rem;
+    max-width: 1480px !important;
+    padding-top: 1.15rem !important;
+    padding-bottom: 2.6rem !important;
 }
 
+/* TYPOGRAPHY */
 [data-testid="stAppViewContainer"] .main,
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
 [data-testid="stAppViewContainer"] .main span,
 [data-testid="stAppViewContainer"] .main small,
+[data-testid="stAppViewContainer"] .main label,
 [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
-    color: #1B2735 !important;
-}
-
-h1, h2, h3,
-[data-testid="stAppViewContainer"] .main h1,
-[data-testid="stAppViewContainer"] .main h2,
-[data-testid="stAppViewContainer"] .main h3 {
-    font-weight: 850 !important;
+    color: var(--fnx-ink) !important;
     opacity: 1 !important;
 }
 
-h1 { font-size: 1.42rem !important; color: #075B9A !important; }
-h2 { font-size: 1.08rem !important; color: #08758F !important; }
-h3 { font-size: 0.94rem !important; color: #16734F !important; }
+[data-testid="stAppViewContainer"] .main h1,
+h1 {
+    color: #075B91 !important;
+    font-size: 1.48rem !important;
+    font-weight: 850 !important;
+    line-height: 1.25 !important;
+}
+
+[data-testid="stAppViewContainer"] .main h2,
+h2 {
+    color: #08758F !important;
+    font-size: 1.12rem !important;
+    font-weight: 800 !important;
+}
+
+[data-testid="stAppViewContainer"] .main h3,
+h3 {
+    color: #16734F !important;
+    font-size: 0.96rem !important;
+    font-weight: 800 !important;
+}
 
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
-[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
-[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
-    font-size: 0.84rem !important;
-    line-height: 1.45 !important;
-}
-
-[data-testid="stAppViewContainer"] .main label,
-[data-testid="stAppViewContainer"] .main .stSelectbox,
-[data-testid="stAppViewContainer"] .main .stTextInput,
-[data-testid="stAppViewContainer"] .main .stNumberInput,
-[data-testid="stAppViewContainer"] .main .stDateInput,
-[data-testid="stAppViewContainer"] .main .stTextArea {
-    font-size: 0.80rem !important;
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"] {
+    font-size: 0.86rem !important;
+    line-height: 1.5 !important;
 }
 
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
-    font-size: 0.72rem !important;
+    color: var(--fnx-muted) !important;
+    font-size: 0.74rem !important;
 }
 
 [data-testid="stAppViewContainer"] .main strong,
 [data-testid="stAppViewContainer"] .main b {
-    color: #102B46 !important;
+    color: var(--fnx-navy) !important;
 }
 
 [data-testid="stAppViewContainer"] .main a {
-    color: #006B8F !important;
+    color: var(--fnx-blue) !important;
     font-weight: 700 !important;
-    text-decoration: underline;
 }
 
+/* BRAND HEADER */
 .foodnexa-brand-title {
     text-align: center;
-    color: #087E9B !important;
-    font-size: clamp(2.8rem, 6vw, 4.7rem);
+    color: var(--fnx-blue) !important;
+    font-size: clamp(2.5rem, 5.3vw, 4.25rem);
     line-height: 1.05;
     font-weight: 900;
     letter-spacing: 3px;
-    margin: 5px 0 0;
-    text-shadow: 0 3px 12px rgba(8,126,155,.14);
+    margin: 4px 0 0;
+    text-shadow: 0 3px 12px rgba(8,125,156,.12);
 }
 
 .foodnexa-brand-subtitle {
     text-align: center;
-    color: #17324D !important;
-    font-size: 0.9rem;
-    font-weight: 800;
-    letter-spacing: 2.2px;
-    margin: 7px 0 18px;
+    color: var(--fnx-navy) !important;
+    font-size: 0.82rem;
+    font-weight: 850;
+    letter-spacing: 2px;
+    margin: 7px 0 17px;
 }
 
 .foodnexa-tagline {
     text-align: center;
-    color: var(--foodnexa-blue) !important;
-    font-size: 13px;
+    color: var(--fnx-blue) !important;
+    font-size: 0.78rem;
     font-weight: 800;
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
     margin: 8px 0 18px;
 }
 
 .foodnexa-line {
     height: 4px;
     width: 100%;
-    background: linear-gradient(90deg, #102B46, #087E9B, #16A078);
+    background: linear-gradient(90deg, var(--fnx-navy), var(--fnx-blue), var(--fnx-green));
     border-radius: 10px;
-    margin-bottom: 22px;
+    margin-bottom: 23px;
 }
 
 .footer-text {
     text-align: center;
-    color: #64748B !important;
-    font-size: 11px;
+    color: var(--fnx-muted) !important;
+    font-size: 0.72rem;
     line-height: 1.7;
-    padding: 15px;
+    padding: 16px;
 }
 
-div[data-testid="stMetric"] {
-    background: linear-gradient(135deg, #087E9B, #075B75) !important;
-    border: 1px solid #087E9B !important;
-    border-left: 5px solid #16A078 !important;
-    border-radius: 13px !important;
-    padding: 14px 16px !important;
-    box-shadow: 0 4px 13px rgba(16, 43, 70, 0.13) !important;
-}
-
-div[data-testid="stMetric"] * {
-    color: #FFFFFF !important;
-}
-
-div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    font-size: 1.28rem !important;
-    font-weight: 800 !important;
-}
-
-div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
-    font-size: 0.72rem !important;
-    font-weight: 700 !important;
-}
-
-div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
-    font-size: 0.68rem !important;
-}
-
+/* SIDEBAR - NAVY BRAND */
 section[data-testid="stSidebar"] {
-    background: #102B46 !important;
+    background: #123451 !important;
+    border-right: 1px solid #D9E4EC !important;
 }
 
 section[data-testid="stSidebar"] * {
@@ -200,81 +184,160 @@ section[data-testid="stSidebar"] * {
 }
 
 section[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    color: #FFFFFF !important;
+    font-size: 0.84rem !important;
     font-weight: 650 !important;
 }
 
-.stTextInput label, .stNumberInput label, .stSelectbox label,
-.stDateInput label, .stTextArea label, .stCheckbox label,
-.stRadio label, .stMultiSelect label {
-    color: #102B46 !important;
-    opacity: 1 !important;
-    font-weight: 700 !important;
-    font-size: 0.78rem !important;
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+    color: #D8E5EF !important;
 }
 
+/* KPI METRICS - WHITE CARDS */
+div[data-testid="stMetric"] {
+    background: #FFFFFF !important;
+    border: 1px solid var(--fnx-border) !important;
+    border-left: 4px solid var(--fnx-green) !important;
+    border-radius: 12px !important;
+    padding: 13px 15px !important;
+    box-shadow: 0 3px 11px rgba(18,52,81,.055) !important;
+}
+
+div[data-testid="stMetric"] *,
+div[data-testid="stMetric"] label,
+div[data-testid="stMetric"] [data-testid="stMetricLabel"],
+div[data-testid="stMetric"] [data-testid="stMetricValue"],
+div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+    color: var(--fnx-navy) !important;
+    opacity: 1 !important;
+}
+
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-size: 1.35rem !important;
+    font-weight: 850 !important;
+}
+
+div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+}
+
+/* INPUTS */
+.stTextInput label, .stNumberInput label, .stSelectbox label,
+.stDateInput label, .stTextArea label, .stCheckbox label,
+.stRadio label, .stMultiSelect label, .stSlider label {
+    color: var(--fnx-navy) !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+    font-size: 0.80rem !important;
+}
+
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea {
+    background: #FFFFFF !important;
+    color: #1B2D3B !important;
+    border: 1px solid #C9D7E1 !important;
+    border-radius: 8px !important;
+}
+
+[data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    color: #1B2D3B !important;
+    border-color: #C9D7E1 !important;
+}
+
+/* BUTTONS */
 .stButton button, .stFormSubmitButton button, .stDownloadButton button {
     border-radius: 8px !important;
-    font-weight: 700 !important;
+    font-weight: 750 !important;
     min-height: 38px;
+    border: 1px solid #087D9C !important;
 }
 
 .stButton button[kind="primary"],
 .stFormSubmitButton button[kind="primary"] {
-    background: #087E9B !important;
+    background: #087D9C !important;
     color: #FFFFFF !important;
-    border: 1px solid #087E9B !important;
 }
 
-div[data-testid="stDataFrame"] {
-    border: 1px solid #D8E3EC !important;
-    border-radius: 9px !important;
+.stDownloadButton button {
+    background: #FFFFFF !important;
+    color: #087D9C !important;
+}
+
+/* TABLES */
+div[data-testid="stDataFrame"],
+div[data-testid="stTable"] {
+    background: #FFFFFF !important;
+    border: 1px solid var(--fnx-border) !important;
+    border-radius: 10px !important;
     overflow: hidden !important;
 }
 
 div[data-testid="stDataFrame"] * {
-    color: #172B3A !important;
-    font-size: 0.76rem !important;
+    color: #1B2D3B !important;
+    font-size: 0.78rem !important;
 }
 
+/* TABS, EXPANDERS, ALERTS */
 .stTabs [data-baseweb="tab"] {
-    font-weight: 700 !important;
+    color: var(--fnx-navy) !important;
+    font-weight: 750 !important;
+}
+
+.stTabs [aria-selected="true"] {
+    color: var(--fnx-blue) !important;
+    border-bottom-color: var(--fnx-green) !important;
 }
 
 details[data-testid="stExpander"] {
-    border: 1px solid #D8E3EC !important;
-    border-radius: 9px !important;
+    background: #FFFFFF !important;
+    border: 1px solid var(--fnx-border) !important;
+    border-radius: 10px !important;
 }
 
-div[data-testid="stAlert"] p {
-    font-weight: 550;
+div[data-testid="stAlert"] {
+    border-radius: 10px !important;
 }
 
+/* CHARTS: keep a white plotting surface */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stPyplotChart"],
+[data-testid="stDeckGlJsonChart"] {
+    background: #FFFFFF !important;
+    border-radius: 10px !important;
+}
+
+/* RESPONSIVE */
 @media (max-width: 768px) {
     .block-container {
-        padding-left: 0.8rem;
-        padding-right: 0.8rem;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
-
-    h1 { font-size: 1.18rem !important; }
-    h2 { font-size: 0.98rem !important; }
-    h3 { font-size: 0.88rem !important; }
-
+    [data-testid="stAppViewContainer"] .main h1 {
+        font-size: 1.2rem !important;
+    }
+    [data-testid="stAppViewContainer"] .main h2 {
+        font-size: 1rem !important;
+    }
     .foodnexa-brand-title {
-        font-size: 2.8rem;
+        font-size: 2.5rem;
         letter-spacing: 2px;
     }
-
     .foodnexa-brand-subtitle {
-        font-size: 0.72rem;
-        letter-spacing: 1.2px;
+        font-size: 0.7rem;
+        letter-spacing: 1px;
     }
-
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         font-size: 1.08rem !important;
     }
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # =====================================================
