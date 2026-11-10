@@ -1,3 +1,4 @@
+
 """FOODNEXA Data Quality & Validation Engine.
 
 Explainable validation of research records. This module evaluates dataset
@@ -7,282 +8,889 @@ Unperformed/missing tests remain NOT TESTED; they are never converted to zero.
 """
 from __future__ import annotations
 
+import json
+import math
 import pandas as pd
 
+
 IDENTITY_FIELDS = ["batch_id", "product_name", "product_category"]
-TRACEABILITY_FIELDS = ["sample_reference", "supplier", "sampling_date", "analysis_date", "laboratory", "analyst"]
-METHOD_FIELDS = ["analysis_units", "analysis_methods", "applicable_limits_reference"]
+
+TRACEABILITY_FIELDS = [
+    "sample_reference", "supplier", "sampling_date",
+    "analysis_date", "laboratory", "analyst"
+]
+
+METHOD_FIELDS = [
+    "analysis_units", "analysis_methods",
+    "applicable_limits_reference"
+]
+
 
 ANALYSIS_GROUPS = {
     "Physico-chimique": [
-        "temperature_celsius", "storage_days", "ph", "humidity_percent",
-        "dry_matter_percent", "ash_percent", "protein_percent", "fat_percent",
-        "titratable_acidity", "density", "conductivity", "viscosity", "brix",
+        "temperature_celsius", "storage_days", "ph",
+        "humidity_percent", "dry_matter_percent", "ash_percent",
+        "protein_percent", "fat_percent", "titratable_acidity",
+        "density", "conductivity", "viscosity", "brix",
         "salt_percent", "particle_size",
     ],
     "Microbiologique": [
-        "total_viable_count", "enterobacteriaceae_count", "coliform_count",
-        "e_coli_count", "yeast_mould_count", "staphylococcus_aureus_count",
-        "bacillus_cereus_count", "listeria_monocytogenes_count", "salmonella_detected",
+        "total_viable_count", "enterobacteriaceae_count",
+        "coliform_count", "e_coli_count", "yeast_mould_count",
+        "staphylococcus_aureus_count", "bacillus_cereus_count",
+        "listeria_monocytogenes_count", "salmonella_detected",
     ],
-    "Contaminants": ["pesticide_residue", "lead", "cadmium", "mercury", "arsenic", "aflatoxin", "mycotoxin"],
-    "Processus": ["processing_temperature_celsius", "processing_time_minutes", "cooling_temperature_celsius", "cooling_time_minutes", "cold_chain_broken", "hygiene_controlled", "pasteurized"],
+    "Contaminants": [
+        "pesticide_residue", "lead", "cadmium", "mercury",
+        "arsenic", "aflatoxin", "mycotoxin"
+    ],
+    "Processus": [
+        "processing_temperature_celsius",
+        "processing_time_minutes",
+        "cooling_temperature_celsius",
+        "cooling_time_minutes",
+        "cold_chain_broken",
+        "hygiene_controlled",
+        "pasteurized",
+    ],
     "Sensoriel": ["sensory_status"],
-    "Emballage": ["net_weight", "seal_integrity_score", "vacuum_level"],
+    "Emballage": [
+        "net_weight", "seal_integrity_score", "vacuum_level"
+    ],
 }
+
 
 # Broad plausibility ranges only; these are NOT legal or product specifications.
 NUMERIC_RANGES = {
-    "ph": (0, 14), "temperature_celsius": (-100, 150), "storage_days": (0, None),
-    "humidity_percent": (0, 100), "dry_matter_percent": (0, 100),
-    "ash_percent": (0, 100), "protein_percent": (0, 100), "fat_percent": (0, 100),
-    "salt_percent": (0, 100), "seal_integrity_score": (0, 100),
-    "total_viable_count": (0, None), "enterobacteriaceae_count": (0, None),
-    "coliform_count": (0, None), "e_coli_count": (0, None),
-    "yeast_mould_count": (0, None), "staphylococcus_aureus_count": (0, None),
-    "bacillus_cereus_count": (0, None), "listeria_monocytogenes_count": (0, None),
-    "processing_time_minutes": (0, None), "cooling_time_minutes": (0, None),
-    "processing_temperature_celsius": (-100, 200), "cooling_temperature_celsius": (-100, 150),
-    "net_weight": (0, None), "vacuum_level": (0, None), "brix": (0, 100),
+    "ph": (0, 14),
+    "temperature_celsius": (-100, 150),
+    "storage_days": (0, None),
+    "humidity_percent": (0, 100),
+    "dry_matter_percent": (0, 100),
+    "ash_percent": (0, 100),
+    "protein_percent": (0, 100),
+    "fat_percent": (0, 100),
+    "salt_percent": (0, 100),
+    "seal_integrity_score": (0, 100),
+    "total_viable_count": (0, None),
+    "enterobacteriaceae_count": (0, None),
+    "coliform_count": (0, None),
+    "e_coli_count": (0, None),
+    "yeast_mould_count": (0, None),
+    "staphylococcus_aureus_count": (0, None),
+    "bacillus_cereus_count": (0, None),
+    "listeria_monocytogenes_count": (0, None),
+    "processing_time_minutes": (0, None),
+    "cooling_time_minutes": (0, None),
+    "processing_temperature_celsius": (-100, 200),
+    "cooling_temperature_celsius": (-100, 150),
+    "net_weight": (0, None),
+    "vacuum_level": (0, None),
+    "brix": (0, 100),
 }
 
 
-# Product-aware analytical priorities. These are research guidance profiles,
-# not universal legal requirements or release specifications.
+# Product-aware analytical priorities.
+# These are research guidance profiles, not universal legal requirements.
 PRODUCT_PROFILES = {
     "Produits laitiers": {
         "name": "Profil produits laitiers",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Processus", "Sensoriel", "Emballage"],
-        "priority_fields": ["ph", "temperature_celsius", "storage_days", "total_viable_count",
-                            "enterobacteriaceae_count", "coliform_count", "staphylococcus_aureus_count",
-                            "listeria_monocytogenes_count", "salmonella_detected",
-                            "processing_temperature_celsius", "processing_time_minutes",
-                            "cooling_temperature_celsius", "cooling_time_minutes", "sensory_status"],
-        "note": "Priorités indicatives : qualité physico-chimique, maîtrise thermique, microbiologie et chaîne du froid.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique", "Processus",
+            "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "ph", "temperature_celsius", "storage_days",
+            "total_viable_count", "enterobacteriaceae_count",
+            "coliform_count", "staphylococcus_aureus_count",
+            "listeria_monocytogenes_count", "salmonella_detected",
+            "processing_temperature_celsius",
+            "processing_time_minutes",
+            "cooling_temperature_celsius",
+            "cooling_time_minutes", "sensory_status"
+        ],
+        "note": (
+            "Priorités indicatives : qualité physico-chimique, "
+            "maîtrise thermique, microbiologie et chaîne du froid."
+        ),
     },
+
     "Produits végétaux": {
         "name": "Profil produits végétaux",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Sensoriel", "Emballage"],
-        "priority_fields": ["ph", "humidity_percent", "dry_matter_percent", "total_viable_count",
-                            "e_coli_count", "yeast_mould_count", "salmonella_detected",
-                            "pesticide_residue", "lead", "cadmium", "processing_temperature_celsius", "sensory_status"],
-        "note": "Priorités indicatives : hygiène, humidité, contaminants pertinents, traitement et conservation.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique",
+            "Contaminants", "Processus", "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "ph", "humidity_percent", "dry_matter_percent",
+            "total_viable_count", "e_coli_count",
+            "yeast_mould_count", "salmonella_detected",
+            "pesticide_residue", "lead", "cadmium",
+            "processing_temperature_celsius", "sensory_status"
+        ],
+        "note": (
+            "Priorités indicatives : hygiène, humidité, "
+            "contaminants pertinents, traitement et conservation."
+        ),
     },
+
     "Céréales et farines": {
         "name": "Profil céréales et farines",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Sensoriel", "Emballage"],
-        "priority_fields": ["humidity_percent", "moisture_percent", "dry_matter_percent", "ash_percent",
-                            "protein_percent", "total_viable_count", "yeast_mould_count",
-                            "bacillus_cereus_count", "aflatoxin", "mycotoxin", "pesticide_residue", "sensory_status"],
-        "note": "Priorités indicatives : humidité, composition, flore, mycotoxines et conditions de stockage.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique",
+            "Contaminants", "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "humidity_percent", "moisture_percent",
+            "dry_matter_percent", "ash_percent", "protein_percent",
+            "total_viable_count", "yeast_mould_count",
+            "bacillus_cereus_count", "aflatoxin", "mycotoxin",
+            "pesticide_residue", "sensory_status"
+        ],
+        "note": (
+            "Priorités indicatives : humidité, composition, flore, "
+            "mycotoxines et conditions de stockage."
+        ),
     },
+
     "Viandes et volailles": {
         "name": "Profil viandes et volailles",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Processus", "Sensoriel", "Emballage"],
-        "priority_fields": ["temperature_celsius", "storage_days", "ph", "total_viable_count",
-                            "e_coli_count", "salmonella_detected", "listeria_monocytogenes_count",
-                            "staphylococcus_aureus_count", "cold_chain_broken", "sensory_status", "seal_integrity_score"],
-        "note": "Priorités indicatives : température/temps, chaîne du froid, indicateurs microbiologiques et emballage.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique",
+            "Processus", "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "temperature_celsius", "storage_days", "ph",
+            "total_viable_count", "e_coli_count",
+            "salmonella_detected",
+            "listeria_monocytogenes_count",
+            "staphylococcus_aureus_count",
+            "cold_chain_broken", "sensory_status",
+            "seal_integrity_score"
+        ],
+        "note": (
+            "Priorités indicatives : température/temps, chaîne du froid, "
+            "indicateurs microbiologiques et emballage."
+        ),
     },
+
     "Poissons et produits de la mer": {
         "name": "Profil produits de la mer",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Sensoriel", "Emballage"],
-        "priority_fields": ["temperature_celsius", "storage_days", "ph", "total_viable_count",
-                            "e_coli_count", "salmonella_detected", "lead", "cadmium", "mercury",
-                            "arsenic", "sensory_status", "seal_integrity_score"],
-        "note": "Priorités indicatives : fraîcheur, température, microbiologie, contaminants pertinents et intégrité de l'emballage.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique",
+            "Contaminants", "Processus", "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "temperature_celsius", "storage_days", "ph",
+            "total_viable_count", "e_coli_count",
+            "salmonella_detected", "lead", "cadmium",
+            "mercury", "arsenic", "sensory_status",
+            "seal_integrity_score"
+        ],
+        "note": (
+            "Priorités indicatives : fraîcheur, température, microbiologie, "
+            "contaminants pertinents et intégrité de l'emballage."
+        ),
     },
+
     "Boissons": {
         "name": "Profil boissons",
-        "priority_domains": ["Physico-chimique", "Microbiologique", "Contaminants", "Processus", "Emballage"],
-        "priority_fields": ["ph", "brix", "acidity", "total_viable_count", "yeast_mould_count",
-                            "e_coli_count", "processing_temperature_celsius", "processing_time_minutes",
-                            "seal_integrity_score", "net_weight"],
-        "note": "Priorités indicatives : pH, °Brix selon formulation, stabilité microbiologique et maîtrise du procédé.",
+        "priority_domains": [
+            "Physico-chimique", "Microbiologique",
+            "Contaminants", "Processus", "Emballage"
+        ],
+        "priority_fields": [
+            "ph", "brix", "acidity", "total_viable_count",
+            "yeast_mould_count", "e_coli_count",
+            "processing_temperature_celsius",
+            "processing_time_minutes", "seal_integrity_score",
+            "net_weight"
+        ],
+        "note": (
+            "Priorités indicatives : pH, °Brix selon formulation, "
+            "stabilité microbiologique et maîtrise du procédé."
+        ),
     },
+
     "Huiles et matières grasses": {
         "name": "Profil huiles et matières grasses",
-        "priority_domains": ["Physico-chimique", "Contaminants", "Sensoriel", "Emballage"],
-        "priority_fields": ["acidity", "peroxide_value", "fat_percent", "lead", "cadmium",
-                            "arsenic", "pesticide_residue", "sensory_status", "net_weight", "seal_integrity_score"],
-        "note": "Priorités indicatives : paramètres d'oxydation et d'acidité, contaminants et protection de l'emballage.",
+        "priority_domains": [
+            "Physico-chimique", "Contaminants",
+            "Sensoriel", "Emballage"
+        ],
+        "priority_fields": [
+            "acidity", "peroxide_value", "fat_percent",
+            "lead", "cadmium", "arsenic", "pesticide_residue",
+            "sensory_status", "net_weight", "seal_integrity_score"
+        ],
+        "note": (
+            "Priorités indicatives : paramètres d'oxydation et d'acidité, "
+            "contaminants et protection de l'emballage."
+        ),
     },
 }
 
-MISSING_TEXT = {"", "nan", "none", "null", "na", "n/a", "non renseigné", "non renseigne",
-                "non analysé", "non analysée", "non analyse", "non analysee",
-                "non évalué", "non evalué", "non évaluée", "non evaluee"}
+
+MISSING_TEXT = {
+    "", "nan", "none", "null", "na", "n/a",
+    "non renseigné", "non renseigne",
+    "non analysé", "non analysée",
+    "non analyse", "non analysee",
+    "non évalué", "non evalué",
+    "non évaluée", "non evaluee"
+}
+
+
+# =====================================================
+# SAFE VALUE HANDLING - JSONB COMPATIBILITY
+# =====================================================
+
+def _is_scalar_missing(value):
+    """Handle pandas/numpy missing values without ambiguous array truth tests."""
+    try:
+        result = pd.isna(value)
+        if getattr(result, "ndim", 0) == 0:
+            return bool(result)
+    except (TypeError, ValueError):
+        pass
+    return False
 
 
 def _present(value):
+    """Safe presence check for scalars and nested Supabase JSONB values."""
+
     if value is None:
         return False
-    try:
-        if pd.isna(value):
-            return False
-    except (TypeError, ValueError):
-        pass
-    return str(value).strip().casefold() not in MISSING_TEXT
 
+    if isinstance(value, str):
+        return value.strip().casefold() not in MISSING_TEXT
+
+    if isinstance(value, (dict, list, tuple, set)):
+        return len(value) > 0
+
+    if _is_scalar_missing(value):
+        return False
+
+    return True
+
+
+def _stable_value(value):
+    """Convert nested values to deterministic, hashable representations."""
+
+    if value is None:
+        return None
+
+    if isinstance(value, dict):
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+            separators=(",", ":")
+        )
+
+    if isinstance(value, (list, tuple)):
+        return json.dumps(
+            list(value),
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+            separators=(",", ":")
+        )
+
+    if isinstance(value, set):
+        normalized = sorted(
+            (_stable_value(item) for item in value),
+            key=str
+        )
+        return json.dumps(
+            normalized,
+            ensure_ascii=False,
+            default=str,
+            separators=(",", ":")
+        )
+
+    if _is_scalar_missing(value):
+        return None
+
+    if hasattr(value, "isoformat") and callable(value.isoformat):
+        try:
+            return value.isoformat()
+        except (TypeError, ValueError):
+            pass
+
+    if isinstance(value, (bool, int, float)):
+        if isinstance(value, float) and not math.isfinite(value):
+            return str(value)
+        return value
+
+    return str(value).strip()
+
+
+# =====================================================
+# COVERAGE
+# =====================================================
 
 def _coverage(df, fields):
-    available_fields = [field for field in fields if field in df.columns]
+
+    available_fields = [
+        field for field in fields
+        if field in df.columns
+    ]
+
     possible = len(df) * len(available_fields)
-    available = sum(int(df[field].map(_present).sum()) for field in available_fields)
-    return {"available": available, "possible": possible,
-            "percent": round(available / possible * 100, 1) if possible else 0.0,
-            "fields": available_fields}
+
+    available = sum(
+        int(df[field].map(_present).sum())
+        for field in available_fields
+    )
+
+    return {
+        "available": available,
+        "possible": possible,
+        "percent": (
+            round(available / possible * 100, 1)
+            if possible else 0.0
+        ),
+        "fields": available_fields,
+    }
 
 
-def _add_issue(issues, row_number, field, problem, severity="À vérifier"):
-    issues.append({"Ligne": row_number, "Champ": field, "Problème": problem, "Niveau": severity})
+def _add_issue(
+    issues,
+    row_number,
+    field,
+    problem,
+    severity="À vérifier"
+):
+    issues.append({
+        "Ligne": row_number,
+        "Champ": field,
+        "Problème": problem,
+        "Niveau": severity,
+    })
 
+
+# =====================================================
+# NUMERIC VALIDATION
+# =====================================================
 
 def _validate_numeric(df, issues):
+
     for field, (low, high) in NUMERIC_RANGES.items():
+
         if field not in df.columns:
             continue
+
         raw = df[field]
         present = raw.map(_present)
         numeric = pd.to_numeric(raw, errors="coerce")
-        for pos in range(len(df)):
-            if present.iloc[pos] and pd.isna(numeric.iloc[pos]):
-                _add_issue(issues, pos + 1, field, "Valeur renseignée mais non numérique", "Erreur")
-            elif pd.notna(numeric.iloc[pos]):
-                value = numeric.iloc[pos]
-                if value < low or (high is not None and value > high):
-                    bound = f"{low} à {high}" if high is not None else f"supérieure ou égale à {low}"
-                    _add_issue(issues, pos + 1, field, f"Valeur hors plage de plausibilité technique ({bound})", "Erreur")
 
+        for pos in range(len(df)):
+
+            if present.iloc[pos] and pd.isna(numeric.iloc[pos]):
+
+                _add_issue(
+                    issues,
+                    pos + 1,
+                    field,
+                    "Valeur renseignée mais non numérique",
+                    "Erreur"
+                )
+
+            elif pd.notna(numeric.iloc[pos]):
+
+                value = numeric.iloc[pos]
+
+                if value < low or (
+                    high is not None and value > high
+                ):
+
+                    bound = (
+                        f"{low} à {high}"
+                        if high is not None
+                        else f"supérieure ou égale à {low}"
+                    )
+
+                    _add_issue(
+                        issues,
+                        pos + 1,
+                        field,
+                        (
+                            "Valeur hors plage de plausibilité "
+                            f"technique ({bound})"
+                        ),
+                        "Erreur"
+                    )
+
+
+# =====================================================
+# DATE VALIDATION
+# =====================================================
 
 def _validate_dates(df, issues):
+
     for field in ("sampling_date", "analysis_date"):
+
         if field not in df.columns:
             continue
-        parsed = pd.to_datetime(df[field], errors="coerce", dayfirst=True)
-        raw_present = df[field].map(_present)
-        for pos in range(len(df)):
-            if raw_present.iloc[pos] and pd.isna(parsed.iloc[pos]):
-                _add_issue(issues, pos + 1, field, "Format de date non reconnu", "Erreur")
-    if {"sampling_date", "analysis_date"}.issubset(df.columns):
-        sampling = pd.to_datetime(df["sampling_date"], errors="coerce", dayfirst=True)
-        analysis = pd.to_datetime(df["analysis_date"], errors="coerce", dayfirst=True)
-        for pos in range(len(df)):
-            if pd.notna(sampling.iloc[pos]) and pd.notna(analysis.iloc[pos]) and analysis.iloc[pos] < sampling.iloc[pos]:
-                _add_issue(issues, pos + 1, "analysis_date", "La date d'analyse précède la date de prélèvement", "Erreur")
 
+        parsed = pd.to_datetime(
+            df[field],
+            errors="coerce",
+            dayfirst=True
+        )
+
+        raw_present = df[field].map(_present)
+
+        for pos in range(len(df)):
+
+            if raw_present.iloc[pos] and pd.isna(parsed.iloc[pos]):
+
+                _add_issue(
+                    issues,
+                    pos + 1,
+                    field,
+                    "Format de date non reconnu",
+                    "Erreur"
+                )
+
+    if {
+        "sampling_date",
+        "analysis_date"
+    }.issubset(df.columns):
+
+        sampling = pd.to_datetime(
+            df["sampling_date"],
+            errors="coerce",
+            dayfirst=True
+        )
+
+        analysis = pd.to_datetime(
+            df["analysis_date"],
+            errors="coerce",
+            dayfirst=True
+        )
+
+        for pos in range(len(df)):
+
+            if (
+                pd.notna(sampling.iloc[pos])
+                and pd.notna(analysis.iloc[pos])
+                and analysis.iloc[pos] < sampling.iloc[pos]
+            ):
+
+                _add_issue(
+                    issues,
+                    pos + 1,
+                    "analysis_date",
+                    "La date d'analyse précède la date de prélèvement",
+                    "Erreur"
+                )
+
+
+# =====================================================
+# CATEGORICAL VALIDATION
+# =====================================================
 
 def _validate_categories(df, issues):
+
     allowed = {
-        "salmonella_detected": {"détectée", "detectee", "non détectée", "non detectee", "oui", "non", "true", "false"},
-        "sensory_status": {"conforme", "non conforme"},
-        "expert_risk_label": {"faible", "modéré", "modere", "élevé", "eleve"},
-        "nonconformity_detected": {"oui", "non", "true", "false"},
+        "salmonella_detected": {
+            "détectée", "detectee",
+            "non détectée", "non detectee",
+            "oui", "non", "true", "false"
+        },
+        "sensory_status": {
+            "conforme", "non conforme"
+        },
+        "expert_risk_label": {
+            "faible", "modéré", "modere",
+            "élevé", "eleve"
+        },
+        "nonconformity_detected": {
+            "oui", "non", "true", "false"
+        },
     }
+
     for field, choices in allowed.items():
+
         if field not in df.columns:
             continue
-        for pos, value in enumerate(df[field].tolist()):
-            if _present(value) and str(value).strip().casefold() not in choices:
-                _add_issue(issues, pos + 1, field, "Valeur catégorielle inattendue; vérifier la nomenclature", "À vérifier")
 
+        for pos, value in enumerate(df[field].tolist()):
+
+            if (
+                _present(value)
+                and str(value).strip().casefold() not in choices
+            ):
+
+                _add_issue(
+                    issues,
+                    pos + 1,
+                    field,
+                    (
+                        "Valeur catégorielle inattendue; "
+                        "vérifier la nomenclature"
+                    ),
+                    "À vérifier"
+                )
+
+
+# =====================================================
+# LOGIC VALIDATION
+# =====================================================
 
 def _validate_logic(df, issues):
-    # These checks identify contradictions; they do not infer regulatory failure.
-    if "pasteurized" in df.columns and "processing_temperature_celsius" in df.columns:
-        pasteurized = df["pasteurized"].astype(str).str.strip().str.casefold()
-        temp = pd.to_numeric(df["processing_temperature_celsius"], errors="coerce")
-        for pos in range(len(df)):
-            if pasteurized.iloc[pos] in {"oui", "true"} and pd.notna(temp.iloc[pos]) and temp.iloc[pos] <= 0:
-                _add_issue(issues, pos + 1, "processing_temperature_celsius", "Vérifier la cohérence entre pasteurisation déclarée et température de traitement", "À vérifier")
-    if "sampling_date" in df.columns and "analysis_date" in df.columns:
-        # The chronological rule is implemented in _validate_dates.
-        pass
 
+    # This check identifies contradictions; it does not infer legal failure.
+
+    if (
+        "pasteurized" in df.columns
+        and "processing_temperature_celsius" in df.columns
+    ):
+
+        pasteurized = (
+            df["pasteurized"]
+            .astype(str)
+            .str.strip()
+            .str.casefold()
+        )
+
+        temp = pd.to_numeric(
+            df["processing_temperature_celsius"],
+            errors="coerce"
+        )
+
+        for pos in range(len(df)):
+
+            if (
+                pasteurized.iloc[pos] in {"oui", "true"}
+                and pd.notna(temp.iloc[pos])
+                and temp.iloc[pos] <= 0
+            ):
+
+                _add_issue(
+                    issues,
+                    pos + 1,
+                    "processing_temperature_celsius",
+                    (
+                        "Vérifier la cohérence entre pasteurisation "
+                        "déclarée et température de traitement"
+                    ),
+                    "À vérifier"
+                )
+
+
+# =====================================================
+# SAFE DUPLICATE DETECTION
+# =====================================================
 
 def _duplicate_metrics(df):
-    exact = int(df.duplicated(keep="first").sum()) if not df.empty else 0
-    sample_duplicates = 0
-    if "sample_reference" in df.columns:
-        refs = df["sample_reference"].astype(str).str.strip()
-        valid = refs[~refs.str.casefold().isin(MISSING_TEXT)]
-        sample_duplicates = int(valid.duplicated(keep="first").sum())
-    return exact, sample_duplicates
+    """
+    Count duplicates safely, including rows containing JSONB dict/list values.
 
+    This function does not modify the source dataframe and deliberately avoids
+    DataFrame.duplicated(), which can fail on unhashable nested values.
+    """
+
+    if df is None or df.empty:
+        return 0, 0
+
+    seen_rows = set()
+    exact_duplicates = 0
+
+    for row in df.itertuples(index=False, name=None):
+
+        try:
+
+            normalized = tuple(
+                _stable_value(value)
+                for value in row
+            )
+
+            if normalized in seen_rows:
+                exact_duplicates += 1
+            else:
+                seen_rows.add(normalized)
+
+        except Exception:
+            continue
+
+    sample_duplicates = 0
+
+    if "sample_reference" in df.columns:
+
+        seen_references = set()
+
+        for value in df["sample_reference"].tolist():
+
+            if not _present(value):
+                continue
+
+            normalized_reference = _stable_value(value)
+
+            if isinstance(normalized_reference, str):
+                normalized_reference = (
+                    normalized_reference.strip().casefold()
+                )
+
+            if normalized_reference in seen_references:
+                sample_duplicates += 1
+            else:
+                seen_references.add(normalized_reference)
+
+    return exact_duplicates, sample_duplicates
+
+
+# =====================================================
+# PRODUCT PROFILE REPORT
+# =====================================================
 
 def _product_profile_report(data):
-    if "product_category" not in data.columns:
-        return {"profiles": [], "message": "Catégorie du produit absente : profil spécifique non calculé."}
-    profiles = []
-    categories = data["product_category"].dropna().astype(str).str.strip()
-    for category in sorted(value for value in categories.unique() if value):
-        config = PRODUCT_PROFILES.get(category)
-        subset = data[data["product_category"].astype(str).str.strip() == category]
-        if not config:
-            profiles.append({"category": category, "profile": "Profil général",
-                             "observations": len(subset), "priority_fields": [],
-                             "measured_priority_fields": [], "coverage_percent": None,
-                             "priority_domains": list(ANALYSIS_GROUPS),
-                             "note": "Catégorie non spécialisée : interprétation générale, à adapter au produit exact."})
-            continue
-        fields = [field for field in config["priority_fields"] if field in subset.columns]
-        possible = len(subset) * len(fields)
-        available = sum(int(subset[field].map(_present).sum()) for field in fields)
-        profiles.append({"category": category, "profile": config["name"],
-                         "observations": len(subset), "priority_fields": fields,
-                         "measured_priority_fields": [field for field in fields if subset[field].map(_present).any()],
-                         "coverage_percent": round(available / possible * 100, 1) if possible else None,
-                         "priority_domains": config["priority_domains"], "note": config["note"]})
-    return {"profiles": profiles,
-            "message": "Les champs prioritaires sont des orientations de recherche. Un champ absent ou non mesuré n'est pas considéré comme non conforme."}
 
+    if "product_category" not in data.columns:
+
+        return {
+            "profiles": [],
+            "message": (
+                "Catégorie du produit absente : "
+                "profil spécifique non calculé."
+            )
+        }
+
+    profiles = []
+
+    categories = (
+        data["product_category"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+
+    for category in sorted(
+        value for value in categories.unique() if value
+    ):
+
+        config = PRODUCT_PROFILES.get(category)
+
+        subset = data[
+            data["product_category"].astype(str).str.strip()
+            == category
+        ]
+
+        if not config:
+
+            profiles.append({
+                "category": category,
+                "profile": "Profil général",
+                "observations": len(subset),
+                "priority_fields": [],
+                "measured_priority_fields": [],
+                "coverage_percent": None,
+                "priority_domains": list(ANALYSIS_GROUPS),
+                "note": (
+                    "Catégorie non spécialisée : interprétation générale, "
+                    "à adapter au produit exact."
+                ),
+            })
+
+            continue
+
+        fields = [
+            field for field in config["priority_fields"]
+            if field in subset.columns
+        ]
+
+        possible = len(subset) * len(fields)
+
+        available = sum(
+            int(subset[field].map(_present).sum())
+            for field in fields
+        )
+
+        profiles.append({
+            "category": category,
+            "profile": config["name"],
+            "observations": len(subset),
+            "priority_fields": fields,
+            "measured_priority_fields": [
+                field for field in fields
+                if subset[field].map(_present).any()
+            ],
+            "coverage_percent": (
+                round(available / possible * 100, 1)
+                if possible else None
+            ),
+            "priority_domains": config["priority_domains"],
+            "note": config["note"],
+        })
+
+    return {
+        "profiles": profiles,
+        "message": (
+            "Les champs prioritaires sont des orientations de recherche. "
+            "Un champ absent ou non mesuré n'est pas considéré "
+            "comme non conforme."
+        )
+    }
+
+
+# =====================================================
+# MAIN QUALITY REPORT
+# =====================================================
 
 def generate_quality_report(df):
-    """Return a backward-compatible, explainable data-quality report."""
-    data = df.copy() if isinstance(df, pd.DataFrame) else pd.DataFrame(df or [])
-    rows, columns = len(data), len(data.columns)
+    """
+    Return a backward-compatible, explainable data-quality report.
+
+    Supports ordinary columns and nested Supabase JSONB values.
+    Missing/unperformed analytical tests are not converted to zero.
+    """
+
+    if isinstance(df, pd.DataFrame):
+        data = df.copy()
+    elif df is None:
+        data = pd.DataFrame()
+    else:
+        data = pd.DataFrame(df)
+
+    rows = len(data)
+    columns = len(data.columns)
+
     if data.empty:
-        return {"rows": rows, "columns": columns, "quality_score": 0.0, "duplicates": 0,
-                "coverage": {}, "issues": [], "issue_count": 0, "score_components": {},
-                "validation_status": "Aucune donnée", "validation_errors": 0,
-                "validation_warnings": 0, "sample_reference_duplicates": 0, "product_profiles": {"profiles": [], "message": "Aucune donnée."},
-                "message": "Aucune observation à évaluer.",
-                "interpretation": "Score de qualité documentaire et technique uniquement; pas un score de sécurité sanitaire."}
+
+        return {
+            "rows": rows,
+            "columns": columns,
+            "quality_score": 0.0,
+            "duplicates": 0,
+            "coverage": {},
+            "issues": [],
+            "issue_count": 0,
+            "score_components": {},
+            "validation_status": "Aucune donnée",
+            "validation_errors": 0,
+            "validation_warnings": 0,
+            "sample_reference_duplicates": 0,
+            "product_profiles": {
+                "profiles": [],
+                "message": "Aucune donnée."
+            },
+            "message": "Aucune observation à évaluer.",
+            "interpretation": (
+                "Score de qualité documentaire et technique uniquement; "
+                "pas un score de sécurité sanitaire."
+            ),
+        }
 
     identity = _coverage(data, IDENTITY_FIELDS)
     trace = _coverage(data, TRACEABILITY_FIELDS)
     methods = _coverage(data, METHOD_FIELDS)
-    groups = {name: _coverage(data, fields) for name, fields in ANALYSIS_GROUPS.items()}
-    # Average only across domains represented in the dataset schema. Missing tests
-    # are untested, not failures; an absent whole domain is not silently invented.
-    represented = [item["percent"] for item in groups.values() if item["fields"]]
-    analytical = round(sum(represented) / len(represented), 1) if represented else 0.0
+
+    groups = {
+        name: _coverage(data, fields)
+        for name, fields in ANALYSIS_GROUPS.items()
+    }
+
+    # Average only across domains represented in the dataset schema.
+    # Missing tests remain untested; absent domains are not invented.
+    represented = [
+        item["percent"]
+        for item in groups.values()
+        if item["fields"]
+    ]
+
+    analytical = (
+        round(sum(represented) / len(represented), 1)
+        if represented else 0.0
+    )
 
     issues = []
+
     _validate_numeric(data, issues)
     _validate_dates(data, issues)
     _validate_categories(data, issues)
     _validate_logic(data, issues)
+
     exact_duplicates, sample_duplicates = _duplicate_metrics(data)
+
     product_profiles = _product_profile_report(data)
+
     if exact_duplicates:
-        _add_issue(issues, "—", "Enregistrement", f"{exact_duplicates} doublon(s) exact(s) détecté(s)", "À vérifier")
+
+        _add_issue(
+            issues,
+            "—",
+            "Enregistrement",
+            f"{exact_duplicates} doublon(s) exact(s) détecté(s)",
+            "À vérifier"
+        )
+
     if sample_duplicates:
-        _add_issue(issues, "—", "sample_reference", f"{sample_duplicates} référence(s) d'échantillon répétée(s); vérifier s'il s'agit d'une ressaisie ou d'une répétition analytique", "À vérifier")
 
-    error_count = sum(1 for item in issues if item["Niveau"] == "Erreur")
+        _add_issue(
+            issues,
+            "—",
+            "sample_reference",
+            (
+                f"{sample_duplicates} référence(s) d'échantillon répétée(s); "
+                "vérifier s'il s'agit d'une ressaisie ou d'une répétition analytique"
+            ),
+            "À vérifier"
+        )
+
+    error_count = sum(
+        1 for item in issues
+        if item["Niveau"] == "Erreur"
+    )
+
     warning_count = len(issues) - error_count
-    coherence = max(0.0, 100.0 - min(100.0, error_count / max(rows, 1) * 20.0))
-    score = (identity["percent"] * .30 + trace["percent"] * .20 + methods["percent"] * .10 + analytical * .30 + coherence * .10)
-    if exact_duplicates:
-        score *= max(0.0, 1 - min(exact_duplicates / rows, 1) * .10)
 
-    status = "Erreurs à corriger" if error_count else "À compléter / vérifier" if warning_count else "Aucune anomalie détectée"
+    coherence = max(
+        0.0,
+        100.0 - min(
+            100.0,
+            error_count / max(rows, 1) * 20.0
+        )
+    )
+
+    score = (
+        identity["percent"] * 0.30
+        + trace["percent"] * 0.20
+        + methods["percent"] * 0.10
+        + analytical * 0.30
+        + coherence * 0.10
+    )
+
+    if exact_duplicates:
+        score *= max(
+            0.0,
+            1 - min(exact_duplicates / rows, 1) * 0.10
+        )
+
+    status = (
+        "Erreurs à corriger"
+        if error_count
+        else "À compléter / vérifier"
+        if warning_count
+        else "Aucune anomalie détectée"
+    )
+
     return {
-        "rows": rows, "columns": columns, "quality_score": round(score, 1),
-        "duplicates": exact_duplicates, "sample_reference_duplicates": sample_duplicates,
-        "coverage": {"Identité produit": identity, "Traçabilité": trace,
-                     "Méthodes et unités": methods, "Analyses par domaine": groups},
+        "rows": rows,
+        "columns": columns,
+        "quality_score": round(score, 1),
+        "duplicates": exact_duplicates,
+        "sample_reference_duplicates": sample_duplicates,
+
+        "coverage": {
+            "Identité produit": identity,
+            "Traçabilité": trace,
+            "Méthodes et unités": methods,
+            "Analyses par domaine": groups,
+        },
+
         "score_components": {
             "Identité produit (30%)": round(identity["percent"], 1),
             "Traçabilité (20%)": round(trace["percent"], 1),
@@ -290,11 +898,29 @@ def generate_quality_report(df):
             "Couverture analytique (30%)": analytical,
             "Cohérence technique (10%)": round(coherence, 1),
         },
-        "issues": issues, "issue_count": len(issues),
+
+        "issues": issues,
+        "issue_count": len(issues),
         "product_profiles": product_profiles,
-        "validation_status": status, "validation_errors": error_count,
+
+        "validation_status": status,
+        "validation_errors": error_count,
         "validation_warnings": warning_count,
-        "message": "Les analyses non renseignées restent non testées; elles ne sont jamais considérées comme zéro ou conformes.",
-        "interpretation": "Score de qualité documentaire et technique du dataset uniquement; ce n'est ni un score de sécurité sanitaire ni une décision de conformité réglementaire.",
-        "limitations": "Les plages contrôlées sont des plages générales de plausibilité, pas des seuils réglementaires. Les limites doivent être définies selon le produit, la méthode, l'unité et la réglementation applicable.",
+
+        "message": (
+            "Les analyses non renseignées restent non testées; "
+            "elles ne sont jamais considérées comme zéro ou conformes."
+        ),
+
+        "interpretation": (
+            "Score de qualité documentaire et technique du dataset uniquement; "
+            "ce n'est ni un score de sécurité sanitaire ni une décision "
+            "de conformité réglementaire."
+        ),
+
+        "limitations": (
+            "Les plages contrôlées sont des plages générales de plausibilité, "
+            "pas des seuils réglementaires. Les limites doivent être définies "
+            "selon le produit, la méthode, l'unité et la réglementation applicable."
+        ),
     }
