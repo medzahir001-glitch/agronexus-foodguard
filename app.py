@@ -65,9 +65,11 @@ html, body, [data-testid="stApp"],
 }
 
 .block-container {
-    max-width: 1480px !important;
-    padding-top: 1.15rem !important;
-    padding-bottom: 2.6rem !important;
+    max-width: 1280px !important;
+    padding-top: 0.65rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    padding-bottom: 1.6rem !important;
 }
 
 /* TYPOGRAPHY */
@@ -86,7 +88,7 @@ html, body, [data-testid="stApp"],
 [data-testid="stAppViewContainer"] .main h1,
 h1 {
     color: #075B91 !important;
-    font-size: 1.48rem !important;
+    font-size: 1.22rem !important;
     font-weight: 850 !important;
     line-height: 1.25 !important;
 }
@@ -94,27 +96,27 @@ h1 {
 [data-testid="stAppViewContainer"] .main h2,
 h2 {
     color: #08758F !important;
-    font-size: 1.12rem !important;
+    font-size: 0.98rem !important;
     font-weight: 800 !important;
 }
 
 [data-testid="stAppViewContainer"] .main h3,
 h3 {
     color: #16734F !important;
-    font-size: 0.96rem !important;
+    font-size: 0.86rem !important;
     font-weight: 800 !important;
 }
 
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
 [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"] {
-    font-size: 0.86rem !important;
-    line-height: 1.5 !important;
+    font-size: 0.70rem !important;
+    line-height: 1.45 !important;
 }
 
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
     color: var(--fnx-muted) !important;
-    font-size: 0.74rem !important;
+    font-size: 0.68rem !important;
 }
 
 [data-testid="stAppViewContainer"] .main strong,
@@ -131,21 +133,21 @@ h3 {
 .foodnexa-brand-title {
     text-align: center;
     color: var(--fnx-blue) !important;
-    font-size: clamp(2.5rem, 5.3vw, 4.25rem);
+    font-size: clamp(1.9rem, 3.2vw, 2.65rem);
     line-height: 1.05;
     font-weight: 900;
     letter-spacing: 3px;
-    margin: 4px 0 0;
+    margin: 0;
     text-shadow: 0 3px 12px rgba(8,125,156,.12);
 }
 
 .foodnexa-brand-subtitle {
     text-align: center;
     color: var(--fnx-navy) !important;
-    font-size: 0.82rem;
+    font-size: 0.70rem;
     font-weight: 850;
     letter-spacing: 2px;
-    margin: 7px 0 17px;
+    margin: 5px 0 12px;
 }
 
 .foodnexa-tagline {
@@ -162,7 +164,7 @@ h3 {
     width: 100%;
     background: linear-gradient(90deg, var(--fnx-navy), var(--fnx-blue), var(--fnx-green));
     border-radius: 10px;
-    margin-bottom: 23px;
+    margin-bottom: 16px;
 }
 
 .footer-text {
@@ -200,7 +202,7 @@ div[data-testid="stMetric"] {
     border: 1px solid var(--fnx-border) !important;
     border-left: 4px solid var(--fnx-green) !important;
     border-radius: 12px !important;
-    padding: 13px 15px !important;
+    padding: 10px 12px !important;
     box-shadow: 0 3px 11px rgba(18,52,81,.055) !important;
 }
 
@@ -214,12 +216,12 @@ div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    font-size: 1.35rem !important;
+    font-size: 1.12rem !important;
     font-weight: 850 !important;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
-    font-size: 0.76rem !important;
+    font-size: 0.70rem !important;
     font-weight: 700 !important;
 }
 
@@ -230,7 +232,7 @@ div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
     color: var(--fnx-navy) !important;
     opacity: 1 !important;
     font-weight: 700 !important;
-    font-size: 0.80rem !important;
+    font-size: 0.74rem !important;
 }
 
 [data-testid="stTextInput"] input,
@@ -278,7 +280,7 @@ div[data-testid="stTable"] {
 
 div[data-testid="stDataFrame"] * {
     color: #1B2D3B !important;
-    font-size: 0.78rem !important;
+    font-size: 0.70rem !important;
 }
 
 /* TABS, EXPANDERS, ALERTS */
@@ -577,7 +579,7 @@ if os.path.exists(LOGO_FILE):
     logo_left, logo_center, logo_right = st.columns([1, 1, 1])
 
     with logo_center:
-        st.image(LOGO_FILE, width=170)
+        st.image(LOGO_FILE, width=125)
 
 st.markdown(
     '<div class="foodnexa-brand-title">FOODNEXA</div>',
