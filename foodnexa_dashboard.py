@@ -177,7 +177,7 @@ def _install_dashboard_style():
         [data-testid="stMainBlockContainer"], .main, .block-container {
           background:#FFFFFF !important;
         }
-        .block-container {max-width:1500px !important; padding-top:1.1rem !important;}
+        .block-container {max-width:1280px !important; padding:0.65rem 1.5rem 1.5rem !important;}
         [data-testid="stAppViewContainer"] .main p,
         [data-testid="stAppViewContainer"] .main li,
         [data-testid="stAppViewContainer"] .main label,
@@ -185,31 +185,31 @@ def _install_dashboard_style():
           color:var(--fnx-ink);
         }
         [data-testid="stAppViewContainer"] .main h1 {
-          color:var(--fnx-navy) !important; font-size:1.75rem !important;
+          color:var(--fnx-navy) !important; font-size:1.28rem !important;
           font-weight:850 !important;
         }
         [data-testid="stAppViewContainer"] .main h2 {
-          color:var(--fnx-blue) !important; font-size:1.18rem !important;
+          color:var(--fnx-blue) !important; font-size:0.98rem !important;
           font-weight:800 !important;
         }
         [data-testid="stAppViewContainer"] .main h3 {
-          color:var(--fnx-green) !important; font-size:1rem !important;
+          color:var(--fnx-green) !important; font-size:0.86rem !important;
           font-weight:750 !important;
         }
         .fnx-kpi {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:13px; padding:15px 17px; min-height:112px;
+          border-radius:10px; padding:10px 12px; min-height:82px;
           box-shadow:0 3px 12px rgba(18,52,81,.06); margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.82rem; color:#526779; font-weight:700;}
-        .fnx-kpi-value {font-size:1.75rem; line-height:1.35; color:var(--fnx-navy); font-weight:850;}
+        .fnx-kpi-label {font-size:.72rem; color:#526779; font-weight:700;}
+        .fnx-kpi-value {font-size:1.25rem; line-height:1.25; color:var(--fnx-navy); font-weight:850;}
         .fnx-kpi-detail {font-size:.72rem; color:#718395; margin-top:2px;}
         .fnx-section {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:14px; padding:15px 17px; margin:8px 0 16px;
+          border-radius:11px; padding:11px 13px; margin:6px 0 11px;
           box-shadow:0 2px 9px rgba(18,52,81,.035);
         }
-        .fnx-section-title {font-size:1.03rem; color:var(--fnx-navy); font-weight:800; margin-bottom:8px;}
+        .fnx-section-title {font-size:.88rem; color:var(--fnx-navy); font-weight:800; margin-bottom:8px;}
         div[data-testid="stDataFrame"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
           border-radius:10px !important; overflow:hidden !important;
