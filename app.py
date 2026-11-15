@@ -330,6 +330,34 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
     border-radius: 10px !important;
 }
 
+/* FINAL COMPACT TYPOGRAPHY OVERRIDE — desktop and mobile */
+[data-testid="stAppViewContainer"] .main,
+[data-testid="stAppViewContainer"] .main p,
+[data-testid="stAppViewContainer"] .main li,
+[data-testid="stAppViewContainer"] .main span,
+[data-testid="stAppViewContainer"] .main label,
+[data-testid="stAppViewContainer"] .main small,
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+    font-size: 0.68rem !important;
+    line-height: 1.35 !important;
+}
+[data-testid="stAppViewContainer"] .main h1 {font-size: 0.98rem !important; line-height:1.2 !important;}
+[data-testid="stAppViewContainer"] .main h2 {font-size: 0.82rem !important; line-height:1.2 !important;}
+[data-testid="stAppViewContainer"] .main h3 {font-size: 0.74rem !important; line-height:1.2 !important;}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label {font-size:0.68rem !important;}
+.stTextInput label, .stNumberInput label, .stSelectbox label,
+.stDateInput label, .stTextArea label, .stCheckbox label,
+.stRadio label, .stMultiSelect label, .stSlider label {font-size:0.64rem !important;}
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea, [data-baseweb="select"] {font-size:0.68rem !important;}
+.stButton button, .stFormSubmitButton button, .stDownloadButton button {font-size:0.68rem !important;}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {font-size:0.86rem !important;}
+div[data-testid="stMetric"] [data-testid="stMetricLabel"] {font-size:0.60rem !important;}
+div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * {font-size:0.62rem !important;}
+.foodnexa-brand-title {font-size:0.98rem !important;}
+.foodnexa-brand-subtitle, .foodnexa-tagline, .footer-text {font-size:0.62rem !important;}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
     .block-container {
@@ -337,21 +365,21 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
         padding-right: 0.8rem !important;
     }
     [data-testid="stAppViewContainer"] .main h1 {
-        font-size: 1.2rem !important;
+        font-size: 0.98rem !important;
     }
     [data-testid="stAppViewContainer"] .main h2 {
-        font-size: 1rem !important;
+        font-size: 0.82rem !important;
     }
     .foodnexa-brand-title {
-        font-size: 2.5rem;
-        letter-spacing: 2px;
+        font-size: 0.98rem !important;
+        letter-spacing: 1px;
     }
     .foodnexa-brand-subtitle {
         font-size: 0.7rem;
         letter-spacing: 1px;
     }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-        font-size: 1.08rem !important;
+        font-size: 0.86rem !important;
     }
 }
 </style>
