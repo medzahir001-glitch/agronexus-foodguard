@@ -143,15 +143,14 @@ def _engine_issues(report):
     return output
 
 
-def _card(label, value, detail="", accent="blue", icon=""):
+def _card(label, value, detail="", accent="green", icon=""):
     palette = {
-        "blue": "#0B6F91",
-        "green": "#15966F",
-        "red": "#D94B4B",
-        "amber": "#D99121",
-        "navy": "#173B5E",
+        "green": "#1B5E20",
+        "red": "#C62828",
+        "amber": "#B7791F",
+        "navy": "#1B5E20",
     }
-    color = palette.get(accent, palette["blue"])
+    color = palette.get(accent, palette["green"])
     st.markdown(
         f"""
         <div class="fnx-kpi" style="border-top:4px solid {color}">
@@ -169,7 +168,7 @@ def _install_dashboard_style():
         """
         <style>
         :root {
-          --fnx-navy:#124B27; --fnx-blue:#1D6536; --fnx-teal:#258A4A;
+          --fnx-navy:#1B5E20; --fnx-green:#2E7D32; --fnx-teal:#66A86B;
           --fnx-green:#2F8F46; --fnx-ink:#17251B; --fnx-muted:#66756A;
           --fnx-border:#DDE8DE; --fnx-bg:#F5F7F5;
         }
@@ -189,16 +188,25 @@ def _install_dashboard_style():
           min-width:250px !important; max-width:250px !important;
         }
         [data-testid="stSidebar"] {
-          background:#124B27 !important;
+          background:#FFFFFF !important;
           border-right:1px solid #DDE8DE !important;
         }
-        [data-testid="stSidebar"] * {color:#FFFFFF !important;}
+        [data-testid="stSidebar"] * {color:#203326 !important;}
         [data-testid="stSidebar"] [data-testid="stRadio"] label {
-          background:rgba(255,255,255,.07); border-radius:8px;
-          padding:7px 10px; margin:2px 0;
+          background:transparent; border-radius:8px;
+          padding:7px 10px; margin:2px 0; font-weight:650;
         }
         [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-          background:rgba(255,255,255,.16);
+          background:#E8F5E9;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+          background:#1B5E20 !important; color:#FFFFFF !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) * {
+          color:#FFFFFF !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] input {
+          display:none !important;
         }
         [data-testid="stAppViewContainer"] .main p,
         [data-testid="stAppViewContainer"] .main li,
@@ -240,7 +248,7 @@ def _install_dashboard_style():
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
           border-radius:10px !important; overflow:hidden !important;
         }
-        div[data-testid="stDataFrame"] * {color:#203648 !important;}
+        div[data-testid="stDataFrame"] * {color:#203326 !important;}
         [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
         [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
         div[data-testid="stMetric"] {
@@ -428,7 +436,7 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
     with kpis[2]:
         _card("High Risk", high, "Requires attention", "red", "!")
     with kpis[3]:
-        _card("Data Quality", score_text, "Dataset quality score", "navy", "◉")
+        _card("Data Quality", score_text, "Dataset quality score", "green", "◉")
 
     st.markdown('<div class="fnx-dashboard-gap"></div>', unsafe_allow_html=True)
 
