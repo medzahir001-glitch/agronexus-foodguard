@@ -251,7 +251,15 @@ def _install_dashboard_style():
         }
         div[data-testid="stDataFrame"] * {color:#203326 !important;}
         [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
-        [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
+        [data-testid="stPyplotChart"] {
+          background:#FFFFFF !important;
+          max-width:410px !important;
+          margin-left:auto !important;
+          margin-right:auto !important;
+        }
+        [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"] {
+          width:100% !important; max-width:410px !important;
+        }
         div[data-testid="stMetric"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
           border-left:3px solid #2F8F46 !important; border-radius:12px !important;
@@ -451,7 +459,7 @@ def _render_donut(labels, values):
         st.info("Aucune donnée de conformité disponible.")
         return
 
-    fig, ax = plt.subplots(figsize=(4.2, 2.8), dpi=130)
+    fig, ax = plt.subplots(figsize=(2.65, 1.85), dpi=115)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#14532D", "#B91C1C", "#D9E8D9"]
@@ -463,16 +471,16 @@ def _render_donut(labels, values):
         colors=actual_colors,
         startangle=90,
         counterclock=False,
-        wedgeprops={"width": 0.30, "edgecolor": "white", "linewidth": 2},
+        wedgeprops={"width": 0.27, "edgecolor": "white", "linewidth": 1.5},
     )
     ax.text(0, 0, f"{(values[0] / total) * 100:.0f}%",
-            ha="center", va="center", fontsize=13, fontweight="bold",
+            ha="center", va="center", fontsize=10, fontweight="bold",
             color="#173B24")
     ax.legend(
         [f"{label} ({value})" for label, value in zip(actual_labels, actual_values)],
         loc="lower center", bbox_to_anchor=(0.5, -0.16),
         ncol=max(1, min(2, len(actual_labels))), frameon=False,
-        fontsize=7, labelcolor="#26352A",
+        fontsize=6, labelcolor="#26352A",
     )
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.6)
@@ -491,18 +499,18 @@ def _render_category_bars(series):
     series = series.sort_values(ascending=True).tail(7)
     if series.empty:
         return
-    fig, ax = plt.subplots(figsize=(6.0, 2.8), dpi=130)
+    fig, ax = plt.subplots(figsize=(3.35, 1.9), dpi=115)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#9BCB8D", "#79B96C", "#5DA957", "#3D9146", "#176B35", "#14532D", "#0F4528"]
     bars = ax.barh(series.index.astype(str), series.values, color=colors[-len(series):], height=0.62)
     ax.spines[["top", "right", "left"]].set_visible(False)
     ax.spines["bottom"].set_color("#DDE8DE")
-    ax.tick_params(axis="y", labelsize=7, length=0, colors="#26352A")
-    ax.tick_params(axis="x", labelsize=6, colors="#657468")
+    ax.tick_params(axis="y", labelsize=6, length=0, colors="#26352A")
+    ax.tick_params(axis="x", labelsize=5, colors="#657468")
     ax.grid(axis="x", color="#E8EEE8", linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.bar_label(bars, padding=2, fontsize=7, color="#26352A")
+    ax.bar_label(bars, padding=2, fontsize=6, color="#26352A")
     fig.tight_layout(pad=0.8)
     st.pyplot(fig, use_container_width=False)
     plt.close(fig)
