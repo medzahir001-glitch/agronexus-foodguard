@@ -253,12 +253,12 @@ def _install_dashboard_style():
         [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
         [data-testid="stPyplotChart"] {
           background:#FFFFFF !important;
-          max-width:410px !important;
+          max-width:180px !important;
           margin-left:auto !important;
           margin-right:auto !important;
         }
         [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"] {
-          width:100% !important; max-width:410px !important;
+          width:100% !important; max-width:180px !important;
         }
         div[data-testid="stMetric"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
@@ -410,14 +410,21 @@ div[data-testid="stDataFrame"] *,div[data-testid="stTable"] * {font-size:.54rem 
         .fnx-kpi-value { font-size: 11px !important; }
         .fnx-section-title { font-size: 8px !important; }
 
-        /* FOODNEXA V6 — smaller dashboard graph frames */
-        [data-testid="stPyplotChart"] {
-            max-width: 285px !important;
+        /* FOODNEXA V7 — much smaller dashboard graph frames */
+        [data-testid="stPyplotChart"],
+        [data-testid="stVegaLiteChart"],
+        [data-testid="stArrowVegaLiteChart"] {
+            width: 100% !important;
+            max-width: 180px !important;
+            max-height: 112px !important;
             margin-left: auto !important;
             margin-right: auto !important;
+            overflow: hidden !important;
         }
-        [data-testid="stPyplotChart"] img {
-            max-width: 285px !important;
+        [data-testid="stPyplotChart"] img,
+        [data-testid="stPyplotChart"] canvas {
+            max-width: 180px !important;
+            max-height: 112px !important;
             height: auto !important;
         }
 
@@ -470,7 +477,7 @@ def _render_donut(labels, values):
         st.info("Aucune donnée de conformité disponible.")
         return
 
-    fig, ax = plt.subplots(figsize=(1.95, 1.40), dpi=110)
+    fig, ax = plt.subplots(figsize=(1.45, 1.00), dpi=100)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#14532D", "#B91C1C", "#D9E8D9"]
@@ -485,13 +492,13 @@ def _render_donut(labels, values):
         wedgeprops={"width": 0.27, "edgecolor": "white", "linewidth": 1.5},
     )
     ax.text(0, 0, f"{(values[0] / total) * 100:.0f}%",
-            ha="center", va="center", fontsize=8, fontweight="bold",
+            ha="center", va="center", fontsize=6, fontweight="bold",
             color="#173B24")
     ax.legend(
         [f"{label} ({value})" for label, value in zip(actual_labels, actual_values)],
         loc="lower center", bbox_to_anchor=(0.5, -0.16),
         ncol=max(1, min(2, len(actual_labels))), frameon=False,
-        fontsize=5, labelcolor="#26352A",
+        fontsize=4, labelcolor="#26352A",
     )
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.35)
@@ -510,18 +517,18 @@ def _render_category_bars(series):
     series = series.sort_values(ascending=True).tail(7)
     if series.empty:
         return
-    fig, ax = plt.subplots(figsize=(2.45, 1.38), dpi=110)
+    fig, ax = plt.subplots(figsize=(1.75, 1.00), dpi=100)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#9BCB8D", "#79B96C", "#5DA957", "#3D9146", "#176B35", "#14532D", "#0F4528"]
     bars = ax.barh(series.index.astype(str), series.values, color=colors[-len(series):], height=0.62)
     ax.spines[["top", "right", "left"]].set_visible(False)
     ax.spines["bottom"].set_color("#DDE8DE")
-    ax.tick_params(axis="y", labelsize=5, length=0, colors="#26352A")
-    ax.tick_params(axis="x", labelsize=4.5, colors="#657468")
+    ax.tick_params(axis="y", labelsize=4, length=0, colors="#26352A")
+    ax.tick_params(axis="x", labelsize=3.8, colors="#657468")
     ax.grid(axis="x", color="#E8EEE8", linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.bar_label(bars, padding=1.5, fontsize=5, color="#26352A")
+    ax.bar_label(bars, padding=1, fontsize=4, color="#26352A")
     fig.tight_layout(pad=0.45)
     st.pyplot(fig, use_container_width=False)
     plt.close(fig)
