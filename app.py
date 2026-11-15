@@ -321,25 +321,19 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
 [data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within,
 [data-baseweb="select"]:focus-within { border-color: #2E7D32 !important; box-shadow: 0 0 0 1px #2E7D32 !important; }
 
-/* CHARTS: keep a white plotting surface */
+/* V7 — EXTRA COMPACT CHARTS */
 [data-testid="stVegaLiteChart"],
 [data-testid="stArrowVegaLiteChart"],
 [data-testid="stPyplotChart"],
 [data-testid="stDeckGlJsonChart"] {
     background: #FFFFFF !important;
-    border-radius: 8px !important;
-    max-width: 275px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-}
-/* V6: keep the Research Analytics graphs genuinely small, not merely centered. */
-[data-testid="stVegaLiteChart"],
-[data-testid="stArrowVegaLiteChart"] {
+    border-radius: 7px !important;
     width: 100% !important;
-    max-width: 250px !important;
-    max-height: 150px !important;
+    max-width: 175px !important;
+    max-height: 112px !important;
     margin-left: auto !important;
     margin-right: auto !important;
+    overflow: hidden !important;
 }
 [data-testid="stVegaLiteChart"] .vega-embed,
 [data-testid="stArrowVegaLiteChart"] .vega-embed,
@@ -347,12 +341,13 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
 [data-testid="stVegaLiteChart"] svg,
 [data-testid="stArrowVegaLiteChart"] canvas,
 [data-testid="stArrowVegaLiteChart"] svg {
-    max-width: 250px !important;
-    max-height: 145px !important;
+    max-width: 175px !important;
+    max-height: 108px !important;
 }
 [data-testid="stPyplotChart"] img,
 [data-testid="stPyplotChart"] canvas {
-    max-width: 275px !important;
+    max-width: 175px !important;
+    max-height: 112px !important;
     height: auto !important;
 }
 
