@@ -110,13 +110,13 @@ h3 {
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
 [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"] {
-    font-size: 0.72rem !important;
+    font-size: 0.76rem !important;
     line-height: 1.42 !important;
 }
 
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
     color: var(--fnx-muted) !important;
-    font-size: 0.66rem !important;
+    font-size: 0.70rem !important;
 }
 
 [data-testid="stAppViewContainer"] .main strong,
@@ -313,8 +313,8 @@ details[data-testid="stExpander"] {
 
 div[data-testid="stAlert"] {
     border-radius: 8px !important;
-    background: #F1F8F1 !important;
-    border: 1px solid #D5E8D5 !important;
+    background: #E8F5E9 !important;
+    border: 1px solid #C8E2CC !important;
     color: #1D2920 !important;
 }
 div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !important; }
@@ -615,7 +615,7 @@ st.markdown(
 # =====================================================
 
 with st.sidebar:
-    st.markdown("## 🛡️ FOODNEXA")
+    st.markdown("### FOODNEXA")
     st.caption("FOOD SAFETY / RISK INTELLIGENCE")
     st.divider()
 
@@ -633,7 +633,7 @@ with st.sidebar:
     )
 
     st.divider()
-    st.info("Current research case:\n\n🥛 Lait pasteurisé")
+    st.caption("Cas de recherche : Lait pasteurisé")
     st.caption("FOODNEXA v1.0")
 
 
