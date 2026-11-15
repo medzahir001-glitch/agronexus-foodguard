@@ -352,6 +352,56 @@ div[data-testid="stDataFrame"] *,div[data-testid="stTable"] * {font-size:.54rem 
 .stButton button,.stFormSubmitButton button,.stDownloadButton button {font-size:.56rem !important; min-height:1.75rem !important; padding:.25rem .55rem !important;}
 .stTextInput label,.stNumberInput label,.stSelectbox label,.stDateInput label,.stTextArea label,.stCheckbox label,.stRadio label,.stMultiSelect label,.stSlider label {font-size:.56rem !important;}
 [data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea,[data-baseweb="select"] {font-size:.58rem !important;}
+
+
+        /* FOODNEXA V4 — EXTRA SMALL TYPOGRAPHY OVERRIDE */
+        html { font-size: 12px !important; }
+        [data-testid="stAppViewContainer"] .main,
+        [data-testid="stAppViewContainer"] .main p,
+        [data-testid="stAppViewContainer"] .main li,
+        [data-testid="stAppViewContainer"] .main span,
+        [data-testid="stAppViewContainer"] .main label,
+        [data-testid="stAppViewContainer"] .main small,
+        [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"],
+        [data-testid="stAppViewContainer"] .main [data-testid="stAlert"] {
+            font-size: 7.5px !important;
+            line-height: 1.25 !important;
+        }
+        [data-testid="stAppViewContainer"] .main h1 { font-size: 10px !important; line-height: 1.15 !important; }
+        [data-testid="stAppViewContainer"] .main h2 { font-size: 9px !important; line-height: 1.15 !important; }
+        [data-testid="stAppViewContainer"] .main h3,
+        [data-testid="stAppViewContainer"] .main h4 { font-size: 8px !important; line-height: 1.15 !important; }
+        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"],
+        [data-testid="stAppViewContainer"] .main small { font-size: 7px !important; }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label,
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * { font-size: 7px !important; line-height: 1.2 !important; }
+        .stTextInput label, .stNumberInput label, .stSelectbox label,
+        .stDateInput label, .stTextArea label, .stCheckbox label,
+        .stRadio label, .stMultiSelect label, .stSlider label,
+        [data-testid="stWidgetLabel"] { font-size: 7px !important; line-height: 1.2 !important; }
+        [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+        [data-testid="stTextArea"] textarea, [data-baseweb="select"],
+        [data-baseweb="select"] *, [data-baseweb="input"] input { font-size: 8px !important; }
+        .stButton button, .stFormSubmitButton button, .stDownloadButton button,
+        [data-testid="stTabs"] button[role="tab"] { font-size: 7px !important; line-height: 1.15 !important; }
+        .stButton button, .stFormSubmitButton button, .stDownloadButton button {
+            min-height: 24px !important; padding: 3px 7px !important;
+        }
+        [data-testid="stTabs"] button[role="tab"] { padding: 3px 6px !important; }
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] { font-size: 11px !important; }
+        div[data-testid="stMetric"] [data-testid="stMetricLabel"],
+        div[data-testid="stMetric"] [data-testid="stMetricDelta"] { font-size: 7px !important; }
+        div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+            font-size: 7px !important;
+            --gdg-font-size: 7px !important;
+        }
+        div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * { font-size: 7px !important; }
+        .fnx-kpi-label, .fnx-kpi-detail, .fnx-status-chip, .fnx-pill { font-size: 7px !important; }
+        .fnx-kpi-value { font-size: 11px !important; }
+        .fnx-section-title { font-size: 8px !important; }
+
 </style>
         """,
         unsafe_allow_html=True,
