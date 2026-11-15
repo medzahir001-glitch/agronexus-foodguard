@@ -169,15 +169,27 @@ def _install_dashboard_style():
         """
         <style>
         :root {
-          --fnx-navy:#123451; --fnx-blue:#087D9C; --fnx-teal:#0B8F98;
-          --fnx-green:#15966F; --fnx-ink:#182B3A; --fnx-muted:#647789;
-          --fnx-border:#DCE7EE; --fnx-bg:#F7FAFC;
+          --fnx-navy:#123B24; --fnx-blue:#185C35; --fnx-teal:#2B8A50;
+          --fnx-green:#2F8F46; --fnx-ink:#17251B; --fnx-muted:#66756A;
+          --fnx-border:#DDE8DE; --fnx-bg:#F5F7F5;
         }
         [data-testid="stAppViewContainer"], [data-testid="stMain"],
         [data-testid="stMainBlockContainer"], .main, .block-container {
-          background:#FFFFFF !important;
+          background:#F5F7F5 !important;
         }
-        .block-container {max-width:1280px !important; padding:0.65rem 1.5rem 1.5rem !important;}
+        .block-container {max-width:1440px !important; padding:0.9rem 1.35rem 1.5rem !important;}
+        [data-testid="stSidebar"] {
+          background:#123B24 !important;
+          border-right:1px solid #DDE8DE !important;
+        }
+        [data-testid="stSidebar"] * {color:#FFFFFF !important;}
+        [data-testid="stSidebar"] [data-testid="stRadio"] label {
+          background:rgba(255,255,255,.07); border-radius:8px;
+          padding:7px 10px; margin:2px 0;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+          background:rgba(255,255,255,.16);
+        }
         [data-testid="stAppViewContainer"] .main p,
         [data-testid="stAppViewContainer"] .main li,
         [data-testid="stAppViewContainer"] .main label,
@@ -185,31 +197,35 @@ def _install_dashboard_style():
           color:var(--fnx-ink);
         }
         [data-testid="stAppViewContainer"] .main h1 {
-          color:var(--fnx-navy) !important; font-size:1.28rem !important;
-          font-weight:850 !important;
+          color:#14532D !important; font-size:2.35rem !important;
+          font-weight:850 !important; letter-spacing:-1.1px !important;
+          margin-bottom:.15rem !important;
         }
         [data-testid="stAppViewContainer"] .main h2 {
-          color:var(--fnx-blue) !important; font-size:0.98rem !important;
+          color:#174B2A !important; font-size:1.12rem !important;
           font-weight:800 !important;
         }
         [data-testid="stAppViewContainer"] .main h3 {
-          color:var(--fnx-green) !important; font-size:0.86rem !important;
+          color:#236B3A !important; font-size:0.96rem !important;
           font-weight:750 !important;
+        }
+        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] p {
+          color:#526357 !important;
         }
         .fnx-kpi {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:10px; padding:10px 12px; min-height:82px;
-          box-shadow:0 3px 12px rgba(18,52,81,.06); margin-bottom:12px;
+          border-radius:12px; padding:13px 15px; min-height:96px;
+          box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.72rem; color:#526779; font-weight:700;}
-        .fnx-kpi-value {font-size:1.25rem; line-height:1.25; color:var(--fnx-navy); font-weight:850;}
-        .fnx-kpi-detail {font-size:.72rem; color:#718395; margin-top:2px;}
+        .fnx-kpi-label {font-size:.76rem; color:#536357; font-weight:700;}
+        .fnx-kpi-value {font-size:1.55rem; line-height:1.25; color:#14532D; font-weight:850;}
+        .fnx-kpi-detail {font-size:.73rem; color:#718075; margin-top:3px;}
         .fnx-section {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:11px; padding:11px 13px; margin:6px 0 11px;
-          box-shadow:0 2px 9px rgba(18,52,81,.035);
+          border-radius:12px; padding:12px 14px; margin:6px 0 11px;
+          box-shadow:0 2px 10px rgba(20,65,35,.045);
         }
-        .fnx-section-title {font-size:.88rem; color:var(--fnx-navy); font-weight:800; margin-bottom:8px;}
+        .fnx-section-title {font-size:.94rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
         div[data-testid="stDataFrame"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
           border-radius:10px !important; overflow:hidden !important;
@@ -219,13 +235,19 @@ def _install_dashboard_style():
         [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
         div[data-testid="stMetric"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-left:4px solid var(--fnx-green) !important; border-radius:12px !important;
-          box-shadow:0 2px 8px rgba(18,52,81,.05) !important;
+          border-left:4px solid #2F8F46 !important; border-radius:12px !important;
+          box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
         }
         div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
         .fnx-pill {
           display:inline-block; padding:4px 9px; border-radius:30px;
-          background:#EAF6F4; color:#087B63; font-size:.72rem; font-weight:750;
+          background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
+        }
+        hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
+        div[data-testid="stDataFrame"] {box-shadow:0 2px 9px rgba(20,65,35,.045);}
+        @media (max-width: 900px) {
+          .block-container {padding-left:.8rem !important; padding-right:.8rem !important;}
+          [data-testid="stAppViewContainer"] .main h1 {font-size:1.75rem !important;}
         }
         </style>
         """,
@@ -268,9 +290,9 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
     history = _df(history_data)
     research = _df(research_data)
 
-    st.title("FOODNEXA Intelligence Dashboard")
+    st.title("Dashboard")
     st.caption("FOOD SAFETY  •  RISK INTELLIGENCE  •  RESEARCH DATA MONITORING")
-    st.write("Vue consolidée des évaluations expérimentales, des observations scientifiques et de la qualité des données.")
+    st.write("Monitoring de la qualité agroalimentaire, des évaluations de risque et des données scientifiques.")
     st.divider()
 
     # KPIs
@@ -313,7 +335,7 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
                 "Niveau de risque": ["Faible", "Modéré", "Élevé"],
                 "Nombre": [low, moderate, high],
             }).set_index("Niveau de risque")
-            st.bar_chart(chart, horizontal=True, color="#0B8F98")
+            st.bar_chart(chart, horizontal=True, color="#2F8F46")
         else:
             st.info("Aucune évaluation de risque disponible.")
         st.markdown("**Risk Score Evolution**")
@@ -328,7 +350,7 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
                 chart = chart[(chart["Lot"] != "") & chart["Risk Score"].notna()].tail(30)
                 if not chart.empty:
                     chart["Évaluation"] = [f"#{i+1}" for i in range(len(chart))]
-                    st.line_chart(chart.set_index("Évaluation")[["Risk Score"]], color="#087D9C")
+                    st.line_chart(chart.set_index("Évaluation")[["Risk Score"]], color="#185C35")
                 else:
                     st.info("Aucun Risk Score numérique disponible.")
             else:
@@ -347,7 +369,7 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
             categories = research[category_col].map(_text).replace("", pd.NA).dropna().value_counts()
             if not categories.empty:
                 st.markdown("**Observations par catégorie de produit**")
-                st.bar_chart(categories.rename_axis("Catégorie").to_frame("Observations"), horizontal=True, color="#15966F")
+                st.bar_chart(categories.rename_axis("Catégorie").to_frame("Observations"), horizontal=True, color="#69A95E")
         elif research.empty:
             st.info("Le Research Dataset ne contient pas encore d'observations.")
         else:
