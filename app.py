@@ -44,14 +44,14 @@ RESEARCH_COLUMNS = [
 st.markdown("""
 <style>
 :root {
-    --fnx-navy: #123451;
-    --fnx-blue: #087D9C;
-    --fnx-teal: #0B8F98;
-    --fnx-green: #15966F;
-    --fnx-ink: #1B2D3B;
-    --fnx-muted: #66798A;
-    --fnx-border: #DCE6ED;
-    --fnx-soft: #F4F8FB;
+    --fnx-navy: #174B2A;
+    --fnx-blue: #2E7D32;
+    --fnx-teal: #4F9657;
+    --fnx-green: #2E7D32;
+    --fnx-ink: #1D2920;
+    --fnx-muted: #68766B;
+    --fnx-border: #DDE8DE;
+    --fnx-soft: #F5F7F5;
 }
 
 /* GLOBAL CANVAS */
@@ -87,36 +87,36 @@ html, body, [data-testid="stApp"],
 
 [data-testid="stAppViewContainer"] .main h1,
 h1 {
-    color: #075B91 !important;
-    font-size: 1.22rem !important;
+    color: #1B5E20 !important;
+    font-size: 1.08rem !important;
     font-weight: 850 !important;
     line-height: 1.25 !important;
 }
 
 [data-testid="stAppViewContainer"] .main h2,
 h2 {
-    color: #08758F !important;
-    font-size: 0.98rem !important;
+    color: #2E7D32 !important;
+    font-size: 0.88rem !important;
     font-weight: 800 !important;
 }
 
 [data-testid="stAppViewContainer"] .main h3,
 h3 {
-    color: #16734F !important;
-    font-size: 0.86rem !important;
+    color: #236B3A !important;
+    font-size: 0.78rem !important;
     font-weight: 800 !important;
 }
 
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
 [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"] {
-    font-size: 0.70rem !important;
-    line-height: 1.45 !important;
+    font-size: 0.72rem !important;
+    line-height: 1.42 !important;
 }
 
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
     color: var(--fnx-muted) !important;
-    font-size: 0.68rem !important;
+    font-size: 0.66rem !important;
 }
 
 [data-testid="stAppViewContainer"] .main strong,
@@ -133,12 +133,12 @@ h3 {
 .foodnexa-brand-title {
     text-align: center;
     color: var(--fnx-blue) !important;
-    font-size: clamp(1.9rem, 3.2vw, 2.65rem);
+    font-size: 1.15rem;
     line-height: 1.05;
     font-weight: 900;
-    letter-spacing: 3px;
+    letter-spacing: 1.5px;
     margin: 0;
-    text-shadow: 0 3px 12px rgba(8,125,156,.12);
+    text-shadow: none;
 }
 
 .foodnexa-brand-subtitle {
@@ -147,24 +147,24 @@ h3 {
     font-size: 0.70rem;
     font-weight: 850;
     letter-spacing: 2px;
-    margin: 5px 0 12px;
+    margin: 3px 0 7px;
 }
 
 .foodnexa-tagline {
     text-align: center;
     color: var(--fnx-blue) !important;
-    font-size: 0.78rem;
+    font-size: 0.70rem;
     font-weight: 800;
     letter-spacing: 1px;
     margin: 8px 0 18px;
 }
 
 .foodnexa-line {
-    height: 4px;
+    height: 2px;
     width: 100%;
-    background: linear-gradient(90deg, var(--fnx-navy), var(--fnx-blue), var(--fnx-green));
+    background: #2E7D32;
     border-radius: 10px;
-    margin-bottom: 16px;
+    margin-bottom: 9px;
 }
 
 .footer-text {
@@ -175,34 +175,45 @@ h3 {
     padding: 16px;
 }
 
-/* SIDEBAR - NAVY BRAND */
+/* SIDEBAR - WHITE AND GREEN */
 section[data-testid="stSidebar"] {
-    background: #123451 !important;
-    border-right: 1px solid #D9E4EC !important;
+    background: #FFFFFF !important;
+    border-right: 1px solid #DDE8DE !important;
 }
 
 section[data-testid="stSidebar"] * {
-    color: #FFFFFF !important;
+    color: #203326 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stRadio"] label {
-    color: #FFFFFF !important;
-    font-size: 0.84rem !important;
+    color: #203326 !important;
+    font-size: 0.76rem !important;
     font-weight: 650 !important;
+    padding: 5px 8px !important;
+    border-radius: 7px !important;
+}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background: #E8F5E9 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+    background: #1B5E20 !important; color: #FFFFFF !important;
+}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) * {
+    color: #FFFFFF !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
 section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
-    color: #D8E5EF !important;
+    color: #68766B !important;
 }
 
 /* KPI METRICS - WHITE CARDS */
 div[data-testid="stMetric"] {
     background: #FFFFFF !important;
     border: 1px solid var(--fnx-border) !important;
-    border-left: 4px solid var(--fnx-green) !important;
-    border-radius: 12px !important;
-    padding: 10px 12px !important;
+    border-left: 3px solid var(--fnx-green) !important;
+    border-radius: 9px !important;
+    padding: 7px 9px !important;
     box-shadow: 0 3px 11px rgba(18,52,81,.055) !important;
 }
 
@@ -216,12 +227,12 @@ div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    font-size: 1.12rem !important;
+    font-size: 0.98rem !important;
     font-weight: 850 !important;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
-    font-size: 0.70rem !important;
+    font-size: 0.66rem !important;
     font-weight: 700 !important;
 }
 
@@ -232,41 +243,41 @@ div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
     color: var(--fnx-navy) !important;
     opacity: 1 !important;
     font-weight: 700 !important;
-    font-size: 0.74rem !important;
+    font-size: 0.70rem !important;
 }
 
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
 [data-testid="stTextArea"] textarea {
     background: #FFFFFF !important;
-    color: #1B2D3B !important;
-    border: 1px solid #C9D7E1 !important;
+    color: #1D2920 !important;
+    border: 1px solid #DDE8DE !important;
     border-radius: 8px !important;
 }
 
 [data-baseweb="select"] > div {
     background: #FFFFFF !important;
-    color: #1B2D3B !important;
-    border-color: #C9D7E1 !important;
+    color: #1D2920 !important;
+    border-color: #DDE8DE !important;
 }
 
 /* BUTTONS */
 .stButton button, .stFormSubmitButton button, .stDownloadButton button {
     border-radius: 8px !important;
     font-weight: 750 !important;
-    min-height: 38px;
-    border: 1px solid #087D9C !important;
+    min-height: 32px;
+    border: 1px solid #2E7D32 !important;
 }
 
 .stButton button[kind="primary"],
 .stFormSubmitButton button[kind="primary"] {
-    background: #087D9C !important;
+    background: #2E7D32 !important;
     color: #FFFFFF !important;
 }
 
 .stDownloadButton button {
     background: #FFFFFF !important;
-    color: #087D9C !important;
+    color: #2E7D32 !important;
 }
 
 /* TABLES */
@@ -279,8 +290,8 @@ div[data-testid="stTable"] {
 }
 
 div[data-testid="stDataFrame"] * {
-    color: #1B2D3B !important;
-    font-size: 0.70rem !important;
+    color: #1D2920 !important;
+    font-size: 0.66rem !important;
 }
 
 /* TABS, EXPANDERS, ALERTS */
@@ -301,8 +312,14 @@ details[data-testid="stExpander"] {
 }
 
 div[data-testid="stAlert"] {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
+    background: #F1F8F1 !important;
+    border: 1px solid #D5E8D5 !important;
+    color: #1D2920 !important;
 }
+div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !important; }
+[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within,
+[data-baseweb="select"]:focus-within { border-color: #2E7D32 !important; box-shadow: 0 0 0 1px #2E7D32 !important; }
 
 /* CHARTS: keep a white plotting surface */
 [data-testid="stVegaLiteChart"],
@@ -574,12 +591,6 @@ research_data = load_csv(RESEARCH_CSV_FILE, RESEARCH_COLUMNS)
 # =====================================================
 # BRAND HEADER
 # =====================================================
-
-if os.path.exists(LOGO_FILE):
-    logo_left, logo_center, logo_right = st.columns([1, 1, 1])
-
-    with logo_center:
-        st.image(LOGO_FILE, width=125)
 
 st.markdown(
     '<div class="foodnexa-brand-title">FOODNEXA</div>',
@@ -1853,7 +1864,8 @@ elif page == "📊 Research Analytics":
                 with chart_col:
                     st.bar_chart(
                         dist_df.set_index("Label expert"),
-                        horizontal=True
+                        horizontal=True,
+                        color="#2E7D32"
                     )
 
                 with table_col:
