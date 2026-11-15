@@ -327,16 +327,33 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
 [data-testid="stPyplotChart"],
 [data-testid="stDeckGlJsonChart"] {
     background: #FFFFFF !important;
-    border-radius: 10px !important;
-    max-width: 410px !important;
+    border-radius: 8px !important;
+    max-width: 275px !important;
     margin-left: auto !important;
     margin-right: auto !important;
 }
-/* Keep analytics charts compact instead of stretching across the full page. */
+/* V6: keep the Research Analytics graphs genuinely small, not merely centered. */
 [data-testid="stVegaLiteChart"],
 [data-testid="stArrowVegaLiteChart"] {
     width: 100% !important;
-    max-width: 410px !important;
+    max-width: 250px !important;
+    max-height: 150px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+[data-testid="stVegaLiteChart"] .vega-embed,
+[data-testid="stArrowVegaLiteChart"] .vega-embed,
+[data-testid="stVegaLiteChart"] canvas,
+[data-testid="stVegaLiteChart"] svg,
+[data-testid="stArrowVegaLiteChart"] canvas,
+[data-testid="stArrowVegaLiteChart"] svg {
+    max-width: 250px !important;
+    max-height: 145px !important;
+}
+[data-testid="stPyplotChart"] img,
+[data-testid="stPyplotChart"] canvas {
+    max-width: 275px !important;
+    height: auto !important;
 }
 
 /* FINAL COMPACT TYPOGRAPHY OVERRIDE — desktop and mobile */
