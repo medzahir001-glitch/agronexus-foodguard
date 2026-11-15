@@ -235,16 +235,16 @@ def _install_dashboard_style():
           border-radius:12px; padding:8px 10px; min-height:68px;
           box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.64rem; color:#536357; font-weight:700;}
-        .fnx-kpi-icon {font-size:.68rem; line-height:1; color:#1B5E20; display:inline-block; margin-right:2px;}
-        .fnx-kpi-value {font-size:1.22rem; line-height:1.25; color:#14532D; font-weight:850;}
-        .fnx-kpi-detail {font-size:.60rem; color:#718075; margin-top:3px;}
+        .fnx-kpi-label {font-size:.72rem; color:#536357; font-weight:700;}
+        .fnx-kpi-icon {font-size:.72rem; line-height:1; color:#1B5E20; display:inline-block; margin-right:2px;}
+        .fnx-kpi-value {font-size:1.12rem; line-height:1.25; color:#14532D; font-weight:850;}
+        .fnx-kpi-detail {font-size:.66rem; color:#718075; margin-top:3px;}
         .fnx-section {
           background:#FFFFFF; border:1px solid var(--fnx-border);
           border-radius:12px; padding:12px 14px; margin:6px 0 11px;
           box-shadow:0 2px 10px rgba(20,65,35,.045);
         }
-        .fnx-section-title {font-size:.82rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
+        .fnx-section-title {font-size:.88rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
         div[data-testid="stDataFrame"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
           border-radius:8px !important; overflow:hidden !important;
@@ -278,7 +278,7 @@ def _install_dashboard_style():
           border-bottom:3px solid #238442;
         }
         .fnx-kpi {padding:8px 10px; min-height:68px;}
-        .fnx-kpi-value {font-size:1.22rem;}
+        .fnx-kpi-value {font-size:1.12rem;}
                 .fnx-dashboard-gap {height:8px;}
         .fnx-section-title {
           color:#174B2A; font-size:.82rem; font-weight:800;
@@ -371,7 +371,7 @@ def _render_donut(labels, values):
     )
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.6)
-    st.pyplot(fig, use_container_width=True)
+    st.pyplot(fig, use_container_width=False)
     plt.close(fig)
 
 
@@ -399,7 +399,7 @@ def _render_category_bars(series):
     ax.set_axisbelow(True)
     ax.bar_label(bars, padding=2, fontsize=7, color="#26352A")
     fig.tight_layout(pad=0.8)
-    st.pyplot(fig, use_container_width=True)
+    st.pyplot(fig, use_container_width=False)
     plt.close(fig)
 
 
