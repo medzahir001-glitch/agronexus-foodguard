@@ -1,335 +1,556 @@
-"""
-FoodNexa — FoodGuard Dashboard
-Reusable Streamlit dashboard inspired by the supplied AgroNexus reference.
-Run: streamlit run app.py
-Or import: from dashboard_foodnexa import render_dashboard
-"""
-
-from datetime import date
+import html
+import json
+import math
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 
-# ----------------------------- PAGE THEME -----------------------------
-GREEN = "#14532D"
-GREEN_2 = "#166534"
-LIGHT_GREEN = "#DCFCE7"
-RED = "#DC2626"
-LIGHT_RED = "#FEE2E2"
-TEXT = "#17231B"
-MUTED = "#647067"
-BG = "#F5F7F5"
+# ============================================================
+# FOODNEXA - WHITE ENTERPRISE DASHBOARD
+# Compatible with app.py render_dashboard(...) call signature.
+# Keeps source data read-only.
+# ============================================================
 
-st.set_page_config(
-    page_title="FoodNexa | FoodGuard",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-st.markdown(
-    f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    html, body, [class*="css"] {{ font-family: Inter, sans-serif; }}
-    .stApp {{ background: {BG}; color: {TEXT}; }}
-    [data-testid="stSidebar"] {{
-        background: #FFFFFF;
-        border-right: 1px solid #E5EAE5;
-    }}
-    [data-testid="stSidebar"] .block-container {{ padding-top: 1.5rem; }}
-    .brand {{
-        display:flex; align-items:center; gap:12px;
-        padding: 4px 4px 22px 4px;
-    }}
-    .brand-icon {{
-        width:48px; height:48px; border-radius:14px;
-        display:flex; align-items:center; justify-content:center;
-        background:#DCFCE7; font-size:27px;
-    }}
-    .brand-name {{ color:{GREEN}; font-weight:800; font-size:24px; line-height:1.1; }}
-    .brand-sub {{ color:{MUTED}; font-size:13px; }}
-    .page-title {{
-        color:{GREEN}; font-size: clamp(34px, 4vw, 54px);
-        font-weight:800; letter-spacing:-1.8px; margin:0; line-height:1.1;
-    }}
-    .page-subtitle {{ color:#59645C; font-size:16px; margin-top:5px; }}
-    .metric-card {{
-        background:white; border:1px solid #E8EDE8; border-radius:16px;
-        padding:18px 18px 15px 18px; min-height:132px;
-        box-shadow:0 3px 12px rgba(20,50,25,.055);
-    }}
-    .metric-top {{ display:flex; align-items:center; gap:10px; color:#4B554D; font-size:14px; }}
-    .metric-icon {{
-        width:40px; height:40px; border-radius:50%;
-        display:flex; align-items:center; justify-content:center; font-size:20px;
-    }}
-    .metric-value {{ font-size:36px; line-height:1.2; font-weight:800; margin:5px 0 0 51px; }}
-    .metric-note {{ font-size:12px; color:{MUTED}; margin-left:51px; }}
-    .panel {{
-        background:white; border:1px solid #E8EDE8; border-radius:16px;
-        padding:18px; box-shadow:0 3px 12px rgba(20,50,25,.045);
-    }}
-    .panel-title {{ color:{GREEN}; font-size:20px; font-weight:750; margin-bottom:0; }}
-    .panel-sub {{ color:{MUTED}; font-size:12px; margin-top:2px; }}
-    .status-ok {{
-        background:#DCFCE7; color:#166534; padding:5px 10px;
-        border-radius:8px; font-weight:650; font-size:12px;
-    }}
-    .status-bad {{
-        background:#FEE2E2; color:#B91C1C; padding:5px 10px;
-        border-radius:8px; font-weight:650; font-size:12px;
-    }}
-    div[data-testid="stDataFrame"] {{
-        border:1px solid #E5EAE5; border-radius:10px; overflow:hidden;
-    }}
-    div.stButton > button[kind="primary"] {{
-        background:{GREEN}; border:1px solid {GREEN}; border-radius:10px;
-        font-weight:650; min-height:42px;
-    }}
-    div.stButton > button[kind="primary"]:hover {{
-        background:{GREEN_2}; border-color:{GREEN_2};
-    }}
-    .small-muted {{ color:{MUTED}; font-size:12px; }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+def _df(value):
+    if value is None:
+        return pd.DataFrame()
+    if isinstance(value, pd.DataFrame):
+        return value.copy()
+    try:
+        return pd.DataFrame(value)
+    except Exception:
+        return pd.DataFrame()
 
 
-# ----------------------------- DEMO DATA -----------------------------
-# Replace these sample records with your existing FoodNexa database/API.
-if "foodnexa_analyses" not in st.session_state:
-    st.session_state.foodnexa_analyses = pd.DataFrame([
-        ["2026-11-15", "FNX-2026-0142", "Tomatoes — Batch T-204", "Marine Dupont", "Conforme"],
-        ["2026-11-15", "FNX-2026-0141", "Milk — Batch M-932", "Nadia Kerrou", "Non conforme"],
-        ["2026-11-14", "FNX-2026-0140", "Wheat — Batch W-770", "Marine Dupont", "Conforme"],
-        ["2026-11-14", "FNX-2026-0139", "Cheese — Batch C-411", "Nadia Kerrou", "Non conforme"],
-        ["2026-11-13", "FNX-2026-0138", "Apples — Batch A-055", "Marine Dupont", "Conforme"],
-    ], columns=["Date", "Sample ID", "Product", "Analyst", "Result"])
-
-df = st.session_state.foodnexa_analyses.copy()
-total = len(df)
-conforme = int((df["Result"] == "Conforme").sum()) if total else 0
-non_conforme = int((df["Result"] == "Non conforme").sum()) if total else 0
-pending = int((df["Result"] == "Pending").sum()) if total else 0
-rate = round(conforme / total * 100) if total else 0
+def _missing(value):
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().casefold() in {"", "nan", "none", "null", "n/a"}
+    if isinstance(value, (dict, list, tuple, set)):
+        return len(value) == 0
+    try:
+        result = pd.isna(value)
+        if getattr(result, "ndim", 0) == 0:
+            return bool(result)
+    except (TypeError, ValueError):
+        pass
+    return False
 
 
-# ----------------------------- SIDEBAR -----------------------------
-with st.sidebar:
-    st.markdown(
-        """
-        <div class="brand">
-          <div class="brand-icon">🛡️</div>
-          <div><div class="brand-name">FoodNexa</div>
-          <div class="brand-sub">FoodGuard</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown("**WORKSPACE**")
-    page = st.radio(
-        "Navigation",
-        ["Dashboard", "Products", "Analyses", "Reports", "Quality Standards"],
-        label_visibility="collapsed",
-        index=0,
-    )
-    st.divider()
-    st.markdown("**SUPPORT**")
-    st.markdown("❔ Help & Support")
-    st.markdown("⚙️ Settings")
-    st.markdown("---")
-    st.caption("FoodNexa FoodGuard · Prototype")
+def _text(value):
+    if _missing(value):
+        return ""
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False, default=str, sort_keys=True)
+    return str(value).strip()
 
 
-# ----------------------------- HEADER -----------------------------
-header_left, header_right = st.columns([5, 1])
-with header_left:
-    st.markdown(f'<div class="page-title">{page}</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="page-subtitle">Monitoring agro-food quality &amp; compliance in real time</div>',
-        unsafe_allow_html=True,
-    )
-with header_right:
-    st.write("")
-    st.write("")
-    st.markdown(
-        '<div style="text-align:right;font-weight:650;color:#344238">👤 FoodNexa Admin</div>',
-        unsafe_allow_html=True,
-    )
+def _column(df, names):
+    if df.empty:
+        return None
+    lookup = {str(c).strip().casefold(): c for c in df.columns}
+    for name in names:
+        if name.casefold() in lookup:
+            return lookup[name.casefold()]
+    return None
 
-st.write("")
 
-# Filters and action
-f1, f2, f3 = st.columns([1.2, 1.35, 1.1])
-with f1:
-    selected_date = st.date_input("Date", value=date.today())
-with f2:
-    analyst = st.text_input("Analyst", value="FoodNexa Admin")
-with f3:
-    st.write("")
-    if st.button("＋  Run Analysis", type="primary", use_container_width=True):
-        st.session_state.show_new_analysis = True
+def _number_series(df, names):
+    col = _column(df, names)
+    if col is None:
+        return pd.Series(dtype="float64")
+    return pd.to_numeric(df[col], errors="coerce").dropna()
 
-if st.session_state.get("show_new_analysis", False):
-    with st.expander("Start a new product analysis", expanded=True):
-        with st.form("new_analysis_form"):
-            product_name = st.text_input("Product / Batch name", placeholder="e.g. Olive oil — Batch O-102")
-            analyst_name = st.text_input("Analyst name", value=analyst)
-            result = st.selectbox("Initial status", ["Pending", "Conforme", "Non conforme"])
-            submitted = st.form_submit_button("Save analysis", type="primary")
-            if submitted:
-                if product_name.strip():
-                    new_row = pd.DataFrame([[
-                        selected_date.isoformat(),
-                        f"FNX-{date.today().year}-{total + 1:04d}",
-                        product_name.strip(),
-                        analyst_name.strip() or "Unassigned",
-                        result,
-                    ]], columns=df.columns)
-                    st.session_state.foodnexa_analyses = pd.concat(
-                        [st.session_state.foodnexa_analyses, new_row], ignore_index=True
-                    )
-                    st.session_state.show_new_analysis = False
-                    st.success("Analysis added to this session.")
-                    st.rerun()
-                else:
-                    st.warning("Please enter a product or batch name.")
 
-st.write("")
+def _unique_count(df, names):
+    col = _column(df, names)
+    if col is None:
+        return 0
+    values = df[col].map(_text)
+    values = values[values != ""]
+    return int(values.nunique())
 
-# ----------------------------- KPI CARDS -----------------------------
-def metric_card(icon, label, value, note, icon_bg, value_color=GREEN):
+
+def _risk_label(value):
+    raw = _text(value).casefold()
+    mapping = {
+        "faible": "Faible", "low": "Faible",
+        "modéré": "Modéré", "modere": "Modéré",
+        "moderate": "Modéré", "medium": "Modéré",
+        "élevé": "Élevé", "eleve": "Élevé", "high": "Élevé",
+    }
+    return mapping.get(raw)
+
+
+def _safe_duplicates(df):
+    if df.empty:
+        return 0
+    seen, duplicates = set(), 0
+    for row in df.itertuples(index=False, name=None):
+        try:
+            normalized = tuple(
+                json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)
+                if isinstance(v, (dict, list, tuple))
+                else (None if _missing(v) else str(v))
+                for v in row
+            )
+            if normalized in seen:
+                duplicates += 1
+            else:
+                seen.add(normalized)
+        except Exception:
+            continue
+    return duplicates
+
+
+def _quality_score(report):
+    if not isinstance(report, dict):
+        return None
+    for key in ("quality_score", "overall_score", "score", "quality_percentage"):
+        try:
+            value = float(report.get(key))
+            if math.isfinite(value):
+                return value
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _engine_issues(report):
+    if not isinstance(report, dict):
+        return []
+    raw = report.get("issues", [])
+    if not isinstance(raw, list):
+        return []
+    output = []
+    for item in raw[:40]:
+        if isinstance(item, dict):
+            output.append({
+                "Ligne": item.get("Ligne", item.get("row", "—")),
+                "Champ": item.get("Champ", item.get("field", "—")),
+                "Anomalie": item.get(
+                    "Problème",
+                    item.get("issue", item.get("message", item.get("type", "À vérifier")))
+                ),
+                "Niveau": item.get(
+                    "Niveau",
+                    item.get("priority", item.get("severity", "À vérifier"))
+                ),
+            })
+        else:
+            output.append({"Ligne": "—", "Champ": "—", "Anomalie": str(item), "Niveau": "À vérifier"})
+    return output
+
+
+def _card(label, value, detail="", accent="green", icon=""):
+    palette = {
+        "green": "#1B5E20",
+        "red": "#C62828",
+        "amber": "#B7791F",
+        "navy": "#1B5E20",
+    }
+    color = palette.get(accent, palette["green"])
     st.markdown(
         f"""
-        <div class="metric-card">
-          <div class="metric-top">
-            <div class="metric-icon" style="background:{icon_bg}">{icon}</div>
-            <span>{label}</span>
-          </div>
-          <div class="metric-value" style="color:{value_color}">{value}</div>
-          <div class="metric-note">{note}</div>
+        <div class="fnx-kpi" style="border-top:3px solid {color}">
+          <div class="fnx-kpi-label"><span class="fnx-kpi-icon">{html.escape(str(icon))}</span> {html.escape(str(label))}</div>
+          <div class="fnx-kpi-value">{html.escape(str(value))}</div>
+          <div class="fnx-kpi-detail">{html.escape(str(detail))}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-m1, m2, m3, m4 = st.columns(4)
-with m1:
-    metric_card("▣", "Total Analyses", total, "All recorded analyses", LIGHT_GREEN)
-with m2:
-    metric_card("✓", "Conforme", conforme, f"{rate}% of total", LIGHT_GREEN)
-with m3:
-    pct_bad = round(non_conforme / total * 100) if total else 0
-    metric_card("⚠", "Non Conforme", non_conforme, f"{pct_bad}% of total", LIGHT_RED, RED)
-with m4:
-    metric_card("⌛", "Pending Review", pending, "Awaiting validation", "#E8F5E9")
 
-st.write("")
+def _install_dashboard_style():
+    st.markdown(
+        """
+        <style>
+        :root {
+          --fnx-navy:#1B5E20; --fnx-green:#2E7D32; --fnx-teal:#66A86B;
+          --fnx-green:#2F8F46; --fnx-ink:#17251B; --fnx-muted:#66756A;
+          --fnx-border:#DDE8DE; --fnx-bg:#F5F7F5;
+        }
+        [data-testid="stAppViewContainer"], [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"], .main, .block-container {
+          background:#F5F7F5 !important;
+        }
+        /* Use the full available desktop canvas instead of a narrow centered column. */
+        .block-container {
+          width:100% !important; max-width:none !important;
+          padding:0.85rem 1.35rem 1.25rem !important;
+        }
+        [data-testid="stMainBlockContainer"] {
+          width:100% !important; max-width:none !important;
+        }
+        [data-testid="stSidebar"] {
+          min-width:220px !important; max-width:220px !important;
+        }
+        [data-testid="stSidebar"] {
+          background:#FFFFFF !important;
+          border-right:1px solid #DDE8DE !important;
+        }
+        [data-testid="stSidebar"] * {color:#203326 !important;}
+        [data-testid="stSidebar"] [data-testid="stRadio"] label {
+          background:transparent; border-radius:8px;
+          padding:5px 8px; margin:1px 0; font-size:.76rem; font-weight:650;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+          background:#E8F5E9;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+          background:#1B5E20 !important; color:#FFFFFF !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) * {
+          color:#FFFFFF !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] input {
+          display:none !important;
+        }
+        [data-testid="stAppViewContainer"] .main p,
+        [data-testid="stAppViewContainer"] .main li,
+        [data-testid="stAppViewContainer"] .main label,
+        [data-testid="stAppViewContainer"] .main span {
+          color:var(--fnx-ink);
+        }
+        [data-testid="stAppViewContainer"] .main h1 {
+          color:#14532D !important; font-size:1.35rem !important;
+          font-weight:850 !important; letter-spacing:-1.1px !important;
+          margin-bottom:.15rem !important;
+        }
+        [data-testid="stAppViewContainer"] .main h2 {
+          color:#174B2A !important; font-size:.90rem !important;
+          font-weight:800 !important;
+        }
+        [data-testid="stAppViewContainer"] .main h3 {
+          color:#236B3A !important; font-size:0.80rem !important;
+          font-weight:750 !important;
+        }
+        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] p {
+          color:#526357 !important;
+        }
+        .fnx-kpi {
+          background:#FFFFFF; border:1px solid var(--fnx-border);
+          border-radius:12px; padding:8px 10px; min-height:68px;
+          box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
+        }
+        .fnx-kpi-label {font-size:.72rem; color:#536357; font-weight:700;}
+        .fnx-kpi-icon {font-size:.72rem; line-height:1; color:#1B5E20; display:inline-block; margin-right:2px;}
+        .fnx-kpi-value {font-size:1.12rem; line-height:1.25; color:#14532D; font-weight:850;}
+        .fnx-kpi-detail {font-size:.66rem; color:#718075; margin-top:3px;}
+        .fnx-section {
+          background:#FFFFFF; border:1px solid var(--fnx-border);
+          border-radius:12px; padding:12px 14px; margin:6px 0 11px;
+          box-shadow:0 2px 10px rgba(20,65,35,.045);
+        }
+        .fnx-section-title {font-size:.88rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
+        div[data-testid="stDataFrame"] {
+          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
+          border-radius:8px !important; overflow:hidden !important;
+        }
+        div[data-testid="stDataFrame"] * {color:#203326 !important;}
+        [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
+        [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
+        div[data-testid="stMetric"] {
+          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
+          border-left:3px solid #2F8F46 !important; border-radius:12px !important;
+          box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
+        }
+        div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
 
-# ----------------------------- CHARTS + ACTIVITY -----------------------------
-left, right = st.columns([0.95, 1.75], gap="medium")
-
-with left:
-    st.markdown('<div class="panel-title">Conformity Rate</div>', unsafe_allow_html=True)
-    st.markdown('<div class="panel-sub">Based on all recorded analyses</div>', unsafe_allow_html=True)
-    if total:
-        donut = pd.DataFrame({
-            "Status": ["Conforme", "Non conforme", "Pending"],
-            "Count": [conforme, non_conforme, pending],
-        })
-        donut = donut[donut["Count"] > 0]
-        fig = px.pie(
-            donut, names="Status", values="Count", hole=0.68,
-            color="Status",
-            color_discrete_map={
-                "Conforme": GREEN_2,
-                "Non conforme": RED,
-                "Pending": "#EAB308",
-            },
-        )
-        fig.update_traces(textinfo="none", hovertemplate="%{label}: %{value}<extra></extra>")
-        fig.update_layout(
-            height=245, margin=dict(t=5, b=5, l=5, r=5),
-            showlegend=True, legend=dict(orientation="h", y=-0.08, x=0.0, font=dict(size=10)),
-            annotations=[dict(text=f"<b>{rate}%</b>", x=0.5, y=0.5,
-                               font=dict(size=27, color=TEXT), showarrow=False)],
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    else:
-        st.info("No analyses recorded yet.")
-
-    st.markdown('<div class="panel-title">Analyses by Product Category</div>', unsafe_allow_html=True)
-    # Demo category values; replace with product category aggregation from your database.
-    categories = pd.DataFrame({
-        "Category": ["Tomatoes", "Milk", "Wheat", "Cheese", "Apples"],
-        "Analyses": [42, 36, 28, 22, 14],
-    })
-    bar = px.bar(categories, x="Analyses", y="Category", orientation="h", text="Analyses",
-                 color="Analyses", color_continuous_scale=["#A7D9A0", GREEN])
-    bar.update_traces(textposition="outside", marker_line_width=0)
-    bar.update_layout(
-        height=245, margin=dict(t=5, b=5, l=0, r=25),
-        xaxis_title=None, yaxis_title=None, coloraxis_showscale=False,
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        yaxis=dict(categoryorder="array", categoryarray=categories["Category"].tolist()[::-1]),
+        .fnx-status-chip {
+          display:inline-block; text-align:center; margin-top:12px;
+          padding:8px 12px; border-radius:20px; background:#E8F3E8;
+          color:#14532D; font-size:.72rem; font-weight:800;
+          border:1px solid #C9E2CC;
+        }
+        [data-testid="stTabs"] [data-baseweb="tab-list"] {
+          gap:8px; border-bottom:1px solid #D6E5D8;
+        }
+        [data-testid="stTabs"] button[role="tab"] {
+          background:#FFFFFF; border:1px solid #D6E5D8;
+          border-radius:9px 9px 0 0; padding:8px 16px;
+          color:#174B2A; font-weight:750;
+        }
+        [data-testid="stTabs"] button[aria-selected="true"] {
+          background:#E8F5E9; color:#14532D;
+          border-bottom:3px solid #238442;
+        }
+        .fnx-kpi {padding:8px 10px; min-height:68px;}
+        .fnx-kpi-value {font-size:1.12rem;}
+                .fnx-dashboard-gap {height:8px;}
+        .fnx-section-title {
+          color:#174B2A; font-size:.82rem; font-weight:800;
+          margin:5px 0 7px; padding-bottom:5px;
+          border-bottom:1px solid #DDE8DE;
+        }
+        [data-testid="stDataFrame"] {font-size:.68rem !important;}
+        .fnx-pill {
+          display:inline-block; padding:4px 9px; border-radius:30px;
+          background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
+        }
+        hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
+        div[data-testid="stDataFrame"] {box-shadow:0 2px 9px rgba(20,65,35,.045);}
+        @media (max-width: 900px) {
+          .block-container {padding-left:1rem !important; padding-right:1rem !important;}
+          [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
+          [data-testid="stAppViewContainer"] .main h1 {font-size:1.25rem !important;}
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
-    st.plotly_chart(bar, use_container_width=True, config={"displayModeBar": False})
 
-with right:
-    st.markdown('<div class="panel-title">Recent Activity</div>', unsafe_allow_html=True)
-    st.markdown('<div class="panel-sub">Latest product analyses</div>', unsafe_allow_html=True)
-    if not df.empty:
-        latest = df.head(3)
-        for _, row in latest.iterrows():
-            status_color = GREEN if row["Result"] == "Conforme" else RED if row["Result"] == "Non conforme" else "#A16207"
-            st.markdown(
-                f"""
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                padding:10px 2px;border-bottom:1px solid #EEF1EE;gap:12px">
-                  <div><b style="font-size:13px">{row['Product']}</b>
-                  <div class="small-muted">{row['Sample ID']} · {row['Date']}</div></div>
-                  <span style="color:{status_color};font-weight:700;font-size:12px">{row['Result']}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
+
+def _render_activity(history, research):
+    records = []
+    if not history.empty:
+        for _, row in history.tail(12).iterrows():
+            records.append({
+                "Date": _text(row.get("analysis_date", "")),
+                "Type": "Évaluation du risque",
+                "Lot": _text(row.get("batch_id", "")),
+                "Produit": _text(row.get("product_name", "")),
+                "Résultat": f'{_text(row.get("risk_level", ""))} — {_text(row.get("risk_score", ""))}',
+            })
+    if not research.empty:
+        for _, row in research.tail(12).iterrows():
+            records.append({
+                "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
+                "Type": "Observation de recherche",
+                "Lot": _text(row.get("batch_id", "")),
+                "Produit": _text(row.get("product_name", "")),
+                "Résultat": "Observation enregistrée",
+            })
+    if not records:
+        st.info("Aucune activité enregistrée pour le moment.")
+        return
+    frame = pd.DataFrame(records)
+    frame["_date"] = pd.to_datetime(frame["Date"], errors="coerce", utc=True)
+    frame = frame.sort_values("_date", ascending=False, na_position="last").drop(columns="_date")
+    st.dataframe(frame.head(10), use_container_width=True, hide_index=True)
+
+
+
+def _render_donut(labels, values):
+    """Render the reference-style green/red doughnut chart."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        st.bar_chart(pd.DataFrame({"Value": values}, index=labels), color="#2E7D32")
+        return
+
+    total = sum(values)
+    if total <= 0:
+        st.info("Aucune donnée de conformité disponible.")
+        return
+
+    fig, ax = plt.subplots(figsize=(4.2, 2.8), dpi=130)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    colors = ["#14532D", "#B91C1C", "#D9E8D9"]
+    actual_labels = [label for label, value in zip(labels, values) if value > 0]
+    actual_values = [value for value in values if value > 0]
+    actual_colors = [color for color, value in zip(colors, values) if value > 0]
+    ax.pie(
+        actual_values,
+        colors=actual_colors,
+        startangle=90,
+        counterclock=False,
+        wedgeprops={"width": 0.30, "edgecolor": "white", "linewidth": 2},
+    )
+    ax.text(0, 0, f"{(values[0] / total) * 100:.0f}%",
+            ha="center", va="center", fontsize=13, fontweight="bold",
+            color="#173B24")
+    ax.legend(
+        [f"{label} ({value})" for label, value in zip(actual_labels, actual_values)],
+        loc="lower center", bbox_to_anchor=(0.5, -0.16),
+        ncol=max(1, min(2, len(actual_labels))), frameon=False,
+        fontsize=7, labelcolor="#26352A",
+    )
+    ax.set_aspect("equal")
+    fig.tight_layout(pad=0.6)
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
+
+
+def _render_category_bars(series):
+    """Render compact green horizontal category bars."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        st.bar_chart(series.sort_values(ascending=True).tail(7), color="#2E7D32")
+        return
+
+    series = series.sort_values(ascending=True).tail(7)
+    if series.empty:
+        return
+    fig, ax = plt.subplots(figsize=(6.0, 2.8), dpi=130)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    colors = ["#9BCB8D", "#79B96C", "#5DA957", "#3D9146", "#176B35", "#14532D", "#0F4528"]
+    bars = ax.barh(series.index.astype(str), series.values, color=colors[-len(series):], height=0.62)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.spines["bottom"].set_color("#DDE8DE")
+    ax.tick_params(axis="y", labelsize=7, length=0, colors="#26352A")
+    ax.tick_params(axis="x", labelsize=6, colors="#657468")
+    ax.grid(axis="x", color="#E8EEE8", linewidth=0.7)
+    ax.set_axisbelow(True)
+    ax.bar_label(bars, padding=2, fontsize=7, color="#26352A")
+    fig.tight_layout(pad=0.8)
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
+
+
+
+def render_dashboard(history_data=None, research_data=None, quality_report=None, pipeline_status=None):
+    """FOODNEXA dashboard arranged like the user's reference image."""
+    _install_dashboard_style()
+
+    history = _df(history_data)
+    research = _df(research_data)
+
+    risk_col = _column(history, ["risk_level"])
+    risk_score_col = _column(history, ["risk_score"])
+    levels = history[risk_col].map(_risk_label) if risk_col else pd.Series(dtype="object")
+
+    low = int((levels == "Faible").sum())
+    moderate = int((levels == "Modéré").sum())
+    high = int((levels == "Élevé").sum())
+
+    score = _quality_score(quality_report)
+    score_text = f"{score:.1f}%" if score is not None else "N/D"
+    scores = _number_series(history, ["risk_score"])
+    average = f"{scores.mean():.1f}/100" if not scores.empty else "N/D"
+
+    # Dashboard title
+    st.title("Dashboard")
+    st.caption("Monitoring agro-food quality, food safety risks and research data")
+
+    # Four KPI cards on one line
+    kpis = st.columns(4, gap="medium")
+    with kpis[0]:
+        _card("Total Analyses", len(history), "Risk assessments", "green", "✓")
+    with kpis[1]:
+        _card("Research Observations", len(research), "Scientific records", "green", "▤")
+    with kpis[2]:
+        _card("High Risk", high, "Requires attention", "red", "!")
+    with kpis[3]:
+        _card("Data Quality", score_text, "Dataset quality score", "green", "◉")
+
+    st.markdown('<div class="fnx-dashboard-gap"></div>', unsafe_allow_html=True)
+
+    # Main dashboard: left analytics, right activity/history
+    left, right = st.columns([0.88, 1.62], gap="medium")
+
+    with left:
+        st.markdown('<div class="fnx-section-title">Conformity Rate</div>', unsafe_allow_html=True)
+        if not history.empty and risk_col:
+            # Low risk is separated from moderate/high risk.
+            # This is a risk indicator, not a regulatory conformity decision.
+            _render_donut(
+                ["Low Risk", "Moderate / High Risk"],
+                [low, moderate + high],
             )
-    else:
-        st.info("No recent activity.")
+        else:
+            st.info("Aucune évaluation disponible.")
 
-    st.write("")
-    st.markdown('<div class="panel-title">Analysis History</div>', unsafe_allow_html=True)
-    st.markdown('<div class="panel-sub">Latest recorded product analyses</div>', unsafe_allow_html=True)
+        st.markdown('<div class="fnx-section-title">Analyses by Product Category</div>', unsafe_allow_html=True)
+        category_col = _column(research, ["product_category", "product_name"])
+        if category_col and not research.empty:
+            categories = (
+                research[category_col].map(_text)
+                .replace("", pd.NA).dropna().value_counts()
+            )
+            if not categories.empty:
+                _render_category_bars(categories)
+            else:
+                st.caption("Aucune catégorie renseignée.")
+        else:
+            st.caption("Les catégories apparaîtront après l'enregistrement des observations.")
 
-    search = st.text_input("Search history", placeholder="Search product, sample ID or analyst", label_visibility="collapsed")
-    filtered = df.copy()
-    if search:
-        mask = filtered.astype(str).apply(
-            lambda col: col.str.contains(search, case=False, na=False)
-        ).any(axis=1)
-        filtered = filtered[mask]
+        st.caption(
+            "Répartition circulaire des niveaux de risque. "
+            "Les catégories ne constituent pas une décision réglementaire de conformité."
+        )
 
-    display_df = filtered.rename(columns={
-        "Date": "Date",
-        "Sample ID": "Sample ID",
-        "Product": "Product",
-        "Analyst": "Analyst",
-        "Result": "Result",
-    })
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
-        height=265,
-        column_config={
-            "Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-            "Result": st.column_config.TextColumn("Result"),
-        },
+    with right:
+        st.markdown('<div class="fnx-section-title">Recent Activity</div>', unsafe_allow_html=True)
+        activity = []
+        if not history.empty:
+            for _, row in history.tail(8).iterrows():
+                activity.append({
+                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
+                    "Sample ID": _text(row.get("batch_id", "")),
+                    "Product": _text(row.get("product_name", "")),
+                    "Result": _text(row.get("risk_level", "")),
+                })
+        if not research.empty:
+            for _, row in research.tail(8).iterrows():
+                activity.append({
+                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
+                    "Sample ID": _text(row.get("batch_id", "")),
+                    "Product": _text(row.get("product_name", "")),
+                    "Result": "Research observation",
+                })
+        if activity:
+            activity_df = pd.DataFrame(activity)
+            activity_df["_sort"] = pd.to_datetime(activity_df["Date"], errors="coerce", utc=True)
+            activity_df = activity_df.sort_values("_sort", ascending=False, na_position="last").drop(columns="_sort")
+            st.dataframe(activity_df.head(6), use_container_width=True, hide_index=True, height=210)
+        else:
+            st.info("Aucune activité récente.")
+
+        st.markdown('<div class="fnx-section-title">Analysis History</div>', unsafe_allow_html=True)
+        if not history.empty:
+            history_rows = []
+            for _, row in history.tail(7).iloc[::-1].iterrows():
+                history_rows.append({
+                    "Date": _text(row.get("analysis_date", "")),
+                    "Sample ID": _text(row.get("batch_id", "")),
+                    "Product": _text(row.get("product_name", "")),
+                    "Analyst": _text(row.get("analyst", row.get("analyst_name", "—"))) or "—",
+                    "Result": _text(row.get("risk_level", "")),
+                })
+            st.dataframe(
+                pd.DataFrame(history_rows),
+                use_container_width=True,
+                hide_index=True,
+                height=245,
+            )
+        else:
+            st.info("Aucun historique disponible.")
+
+    # Less frequently used technical details remain accessible without
+    # pushing the main dashboard below the fold.
+    with st.expander("Data Quality & System Status", expanded=False):
+        q1, q2, q3 = st.columns(3)
+        q1.metric("Quality Score", score_text)
+        q2.metric("Research Observations", len(research))
+        q3.metric("Exact Duplicates", _safe_duplicates(research))
+
+        issues = _engine_issues(quality_report)
+        if issues:
+            st.markdown("**Quality issues to review**")
+            st.dataframe(pd.DataFrame(issues), use_container_width=True, hide_index=True)
+        elif research.empty:
+            st.info("En attente de données pour le contrôle qualité.")
+        else:
+            st.success("Aucune anomalie signalée par le rapport qualité.")
+
+        if isinstance(pipeline_status, dict) and pipeline_status:
+            st.markdown("**FOODNEXA System Pipeline**")
+            for name, status in pipeline_status.items():
+                if status is True:
+                    st.success(f"{name} — Disponible")
+                elif status is False:
+                    st.warning(f"{name} — Indisponible")
+                else:
+                    st.info(f"{name} — Statut non confirmé")
+
+    st.caption(
+        "FOODNEXA est un prototype expérimental de Food Safety Risk Intelligence. "
+        "Les indicateurs ne remplacent pas les analyses de laboratoire, "
+        "l'expertise scientifique ou les exigences réglementaires applicables."
     )
-    st.caption(f"Showing {len(filtered)} of {len(df)} results")
-
-st.markdown("---")
-st.caption("© FoodNexa FoodGuard · Food quality and safety monitoring")
