@@ -328,6 +328,15 @@ div[data-testid="stAlert"] svg { color: #2E7D32 !important; fill: #2E7D32 !impor
 [data-testid="stDeckGlJsonChart"] {
     background: #FFFFFF !important;
     border-radius: 10px !important;
+    max-width: 410px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+/* Keep analytics charts compact instead of stretching across the full page. */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"] {
+    width: 100% !important;
+    max-width: 410px !important;
 }
 
 /* FINAL COMPACT TYPOGRAPHY OVERRIDE — desktop and mobile */
