@@ -428,6 +428,40 @@ div[data-testid="stDataFrame"] *,div[data-testid="stTable"] * {font-size:.54rem 
             height: auto !important;
         }
 
+
+        /* FOODNEXA V8 — smaller graph canvas and rendered figures */
+        [data-testid="stPyplotChart"],
+        [data-testid="stVegaLiteChart"],
+        [data-testid="stArrowVegaLiteChart"],
+        [data-testid="stDeckGlJsonChart"] {
+            width: 110px !important;
+            max-width: 110px !important;
+            height: 78px !important;
+            max-height: 78px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            overflow: hidden !important;
+        }
+        [data-testid="stPyplotChart"] img,
+        [data-testid="stPyplotChart"] canvas {
+            width: 105px !important;
+            max-width: 105px !important;
+            height: auto !important;
+            max-height: 78px !important;
+            object-fit: contain !important;
+        }
+        [data-testid="stVegaLiteChart"] .vega-embed,
+        [data-testid="stArrowVegaLiteChart"] .vega-embed,
+        [data-testid="stVegaLiteChart"] svg,
+        [data-testid="stArrowVegaLiteChart"] svg,
+        [data-testid="stVegaLiteChart"] canvas,
+        [data-testid="stArrowVegaLiteChart"] canvas {
+            width: 105px !important;
+            max-width: 105px !important;
+            height: 72px !important;
+            max-height: 72px !important;
+        }
+
 </style>
         """,
         unsafe_allow_html=True,
@@ -477,7 +511,7 @@ def _render_donut(labels, values):
         st.info("Aucune donnée de conformité disponible.")
         return
 
-    fig, ax = plt.subplots(figsize=(1.45, 1.00), dpi=100)
+    fig, ax = plt.subplots(figsize=(1.05, 0.78), dpi=100)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#14532D", "#B91C1C", "#D9E8D9"]
@@ -517,7 +551,7 @@ def _render_category_bars(series):
     series = series.sort_values(ascending=True).tail(7)
     if series.empty:
         return
-    fig, ax = plt.subplots(figsize=(1.75, 1.00), dpi=100)
+    fig, ax = plt.subplots(figsize=(1.22, 0.78), dpi=100)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     colors = ["#9BCB8D", "#79B96C", "#5DA957", "#3D9146", "#176B35", "#14532D", "#0F4528"]
