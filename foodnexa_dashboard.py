@@ -153,8 +153,8 @@ def _card(label, value, detail="", accent="green", icon=""):
     color = palette.get(accent, palette["green"])
     st.markdown(
         f"""
-        <div class="fnx-kpi" style="border-top:4px solid {color}">
-          <div class="fnx-kpi-label">{html.escape(str(icon))} {html.escape(str(label))}</div>
+        <div class="fnx-kpi" style="border-top:3px solid {color}">
+          <div class="fnx-kpi-label"><span class="fnx-kpi-icon">{html.escape(str(icon))}</span> {html.escape(str(label))}</div>
           <div class="fnx-kpi-value">{html.escape(str(value))}</div>
           <div class="fnx-kpi-detail">{html.escape(str(detail))}</div>
         </div>
@@ -179,13 +179,13 @@ def _install_dashboard_style():
         /* Use the full available desktop canvas instead of a narrow centered column. */
         .block-container {
           width:100% !important; max-width:none !important;
-          padding:1.35rem 2rem 2rem !important;
+          padding:0.85rem 1.35rem 1.25rem !important;
         }
         [data-testid="stMainBlockContainer"] {
           width:100% !important; max-width:none !important;
         }
         [data-testid="stSidebar"] {
-          min-width:250px !important; max-width:250px !important;
+          min-width:220px !important; max-width:220px !important;
         }
         [data-testid="stSidebar"] {
           background:#FFFFFF !important;
@@ -194,7 +194,7 @@ def _install_dashboard_style():
         [data-testid="stSidebar"] * {color:#203326 !important;}
         [data-testid="stSidebar"] [data-testid="stRadio"] label {
           background:transparent; border-radius:8px;
-          padding:7px 10px; margin:2px 0; font-weight:650;
+          padding:5px 8px; margin:1px 0; font-size:.76rem; font-weight:650;
         }
         [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
           background:#E8F5E9;
@@ -215,16 +215,16 @@ def _install_dashboard_style():
           color:var(--fnx-ink);
         }
         [data-testid="stAppViewContainer"] .main h1 {
-          color:#14532D !important; font-size:2.05rem !important;
+          color:#14532D !important; font-size:1.35rem !important;
           font-weight:850 !important; letter-spacing:-1.1px !important;
           margin-bottom:.15rem !important;
         }
         [data-testid="stAppViewContainer"] .main h2 {
-          color:#174B2A !important; font-size:1.02rem !important;
+          color:#174B2A !important; font-size:.90rem !important;
           font-weight:800 !important;
         }
         [data-testid="stAppViewContainer"] .main h3 {
-          color:#236B3A !important; font-size:0.88rem !important;
+          color:#236B3A !important; font-size:0.80rem !important;
           font-weight:750 !important;
         }
         [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] p {
@@ -232,28 +232,29 @@ def _install_dashboard_style():
         }
         .fnx-kpi {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:12px; padding:13px 15px; min-height:96px;
+          border-radius:12px; padding:8px 10px; min-height:68px;
           box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.70rem; color:#536357; font-weight:700;}
-        .fnx-kpi-value {font-size:1.42rem; line-height:1.25; color:#14532D; font-weight:850;}
-        .fnx-kpi-detail {font-size:.66rem; color:#718075; margin-top:3px;}
+        .fnx-kpi-label {font-size:.64rem; color:#536357; font-weight:700;}
+        .fnx-kpi-icon {font-size:.68rem; line-height:1; color:#1B5E20; display:inline-block; margin-right:2px;}
+        .fnx-kpi-value {font-size:1.22rem; line-height:1.25; color:#14532D; font-weight:850;}
+        .fnx-kpi-detail {font-size:.60rem; color:#718075; margin-top:3px;}
         .fnx-section {
           background:#FFFFFF; border:1px solid var(--fnx-border);
           border-radius:12px; padding:12px 14px; margin:6px 0 11px;
           box-shadow:0 2px 10px rgba(20,65,35,.045);
         }
-        .fnx-section-title {font-size:.94rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
+        .fnx-section-title {font-size:.82rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
         div[data-testid="stDataFrame"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-radius:10px !important; overflow:hidden !important;
+          border-radius:8px !important; overflow:hidden !important;
         }
         div[data-testid="stDataFrame"] * {color:#203326 !important;}
         [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
         [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
         div[data-testid="stMetric"] {
           background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-left:4px solid #2F8F46 !important; border-radius:12px !important;
+          border-left:3px solid #2F8F46 !important; border-radius:12px !important;
           box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
         }
         div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
@@ -273,18 +274,18 @@ def _install_dashboard_style():
           color:#174B2A; font-weight:750;
         }
         [data-testid="stTabs"] button[aria-selected="true"] {
-          background:#E8F3E8; color:#14532D;
+          background:#E8F5E9; color:#14532D;
           border-bottom:3px solid #238442;
         }
-        .fnx-kpi {padding:12px 14px; min-height:88px;}
-        .fnx-kpi-value {font-size:1.7rem;}
+        .fnx-kpi {padding:8px 10px; min-height:68px;}
+        .fnx-kpi-value {font-size:1.22rem;}
                 .fnx-dashboard-gap {height:8px;}
         .fnx-section-title {
-          color:#174B2A; font-size:.94rem; font-weight:800;
+          color:#174B2A; font-size:.82rem; font-weight:800;
           margin:5px 0 7px; padding-bottom:5px;
           border-bottom:1px solid #DDE8DE;
         }
-        [data-testid="stDataFrame"] {font-size:.78rem !important;}
+        [data-testid="stDataFrame"] {font-size:.68rem !important;}
         .fnx-pill {
           display:inline-block; padding:4px 9px; border-radius:30px;
           background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
@@ -294,7 +295,7 @@ def _install_dashboard_style():
         @media (max-width: 900px) {
           .block-container {padding-left:1rem !important; padding-right:1rem !important;}
           [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
-          [data-testid="stAppViewContainer"] .main h1 {font-size:1.9rem !important;}
+          [data-testid="stAppViewContainer"] .main h1 {font-size:1.25rem !important;}
         }
         </style>
         """,
@@ -337,7 +338,7 @@ def _render_donut(labels, values):
     try:
         import matplotlib.pyplot as plt
     except ImportError:
-        st.bar_chart(pd.DataFrame({"Value": values}, index=labels), color="#238442")
+        st.bar_chart(pd.DataFrame({"Value": values}, index=labels), color="#2E7D32")
         return
 
     total = sum(values)
@@ -360,13 +361,13 @@ def _render_donut(labels, values):
         wedgeprops={"width": 0.30, "edgecolor": "white", "linewidth": 2},
     )
     ax.text(0, 0, f"{(values[0] / total) * 100:.0f}%",
-            ha="center", va="center", fontsize=17, fontweight="bold",
+            ha="center", va="center", fontsize=13, fontweight="bold",
             color="#173B24")
     ax.legend(
         [f"{label} ({value})" for label, value in zip(actual_labels, actual_values)],
         loc="lower center", bbox_to_anchor=(0.5, -0.16),
         ncol=max(1, min(2, len(actual_labels))), frameon=False,
-        fontsize=8, labelcolor="#26352A",
+        fontsize=7, labelcolor="#26352A",
     )
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.6)
@@ -379,7 +380,7 @@ def _render_category_bars(series):
     try:
         import matplotlib.pyplot as plt
     except ImportError:
-        st.bar_chart(series.sort_values(ascending=True).tail(7), color="#238442")
+        st.bar_chart(series.sort_values(ascending=True).tail(7), color="#2E7D32")
         return
 
     series = series.sort_values(ascending=True).tail(7)
@@ -392,11 +393,11 @@ def _render_category_bars(series):
     bars = ax.barh(series.index.astype(str), series.values, color=colors[-len(series):], height=0.62)
     ax.spines[["top", "right", "left"]].set_visible(False)
     ax.spines["bottom"].set_color("#DDE8DE")
-    ax.tick_params(axis="y", labelsize=8, length=0, colors="#26352A")
-    ax.tick_params(axis="x", labelsize=7, colors="#657468")
+    ax.tick_params(axis="y", labelsize=7, length=0, colors="#26352A")
+    ax.tick_params(axis="x", labelsize=6, colors="#657468")
     ax.grid(axis="x", color="#E8EEE8", linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.bar_label(bars, padding=3, fontsize=8, color="#26352A")
+    ax.bar_label(bars, padding=2, fontsize=7, color="#26352A")
     fig.tight_layout(pad=0.8)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
