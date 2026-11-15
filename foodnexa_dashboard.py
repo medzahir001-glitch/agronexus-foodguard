@@ -327,7 +327,32 @@ def _install_dashboard_style():
           [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
           [data-testid="stAppViewContainer"] .main h1 {font-size:.98rem !important;}
         }
-        </style>
+        
+/* EXTRA SMALL TYPOGRAPHY V3 */
+[data-testid="stAppViewContainer"] .main p,
+[data-testid="stAppViewContainer"] .main li,
+[data-testid="stAppViewContainer"] .main span,
+[data-testid="stAppViewContainer"] .main label,
+[data-testid="stAppViewContainer"] .main small,
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {font-size:.58rem !important; line-height:1.28 !important;}
+[data-testid="stAppViewContainer"] .main h1 {font-size:.82rem !important; line-height:1.18 !important;}
+[data-testid="stAppViewContainer"] .main h2 {font-size:.72rem !important; line-height:1.18 !important;}
+[data-testid="stAppViewContainer"] .main h3 {font-size:.66rem !important; line-height:1.18 !important;}
+[data-testid="stSidebar"] [data-testid="stRadio"] label {font-size:.58rem !important;}
+.fnx-kpi-label {font-size:.56rem !important;}
+.fnx-kpi-value {font-size:.76rem !important;}
+.fnx-kpi-detail {font-size:.54rem !important;}
+.fnx-section-title {font-size:.66rem !important;}
+.fnx-status-chip,.fnx-pill {font-size:.56rem !important;}
+[data-testid="stTabs"] button[role="tab"] {font-size:.56rem !important; padding:4px 7px !important;}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {font-size:.72rem !important;}
+div[data-testid="stMetric"] [data-testid="stMetricLabel"] {font-size:.54rem !important;}
+div[data-testid="stDataFrame"] *,div[data-testid="stTable"] * {font-size:.54rem !important;}
+.stButton button,.stFormSubmitButton button,.stDownloadButton button {font-size:.56rem !important; min-height:1.75rem !important; padding:.25rem .55rem !important;}
+.stTextInput label,.stNumberInput label,.stSelectbox label,.stDateInput label,.stTextArea label,.stCheckbox label,.stRadio label,.stMultiSelect label,.stSlider label {font-size:.56rem !important;}
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea,[data-baseweb="select"] {font-size:.58rem !important;}
+</style>
         """,
         unsafe_allow_html=True,
     )
