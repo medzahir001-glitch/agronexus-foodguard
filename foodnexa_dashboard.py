@@ -292,10 +292,40 @@ def _install_dashboard_style():
         }
         hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
         div[data-testid="stDataFrame"] {box-shadow:0 2px 9px rgba(20,65,35,.045);}
+        /* FINAL COMPACT TYPOGRAPHY OVERRIDE: this style is injected after app.py CSS */
+        [data-testid="stAppViewContainer"] .main,
+        [data-testid="stAppViewContainer"] .main p,
+        [data-testid="stAppViewContainer"] .main li,
+        [data-testid="stAppViewContainer"] .main span,
+        [data-testid="stAppViewContainer"] .main label,
+        [data-testid="stAppViewContainer"] .main small,
+        [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+          font-size:.68rem !important; line-height:1.35 !important;
+        }
+        [data-testid="stAppViewContainer"] .main h1 {font-size:.98rem !important; line-height:1.2 !important;}
+        [data-testid="stAppViewContainer"] .main h2 {font-size:.82rem !important; line-height:1.2 !important;}
+        [data-testid="stAppViewContainer"] .main h3 {font-size:.74rem !important; line-height:1.2 !important;}
+        [data-testid="stSidebar"] [data-testid="stRadio"] label {font-size:.68rem !important;}
+        .fnx-kpi-label {font-size:.64rem !important;}
+        .fnx-kpi-value {font-size:.90rem !important;}
+        .fnx-kpi-detail {font-size:.60rem !important;}
+        .fnx-section-title {font-size:.76rem !important;}
+        .fnx-status-chip, .fnx-pill {font-size:.64rem !important;}
+        [data-testid="stTabs"] button[role="tab"] {font-size:.66rem !important; padding:6px 10px !important;}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {font-size:.86rem !important;}
+        div[data-testid="stMetric"] [data-testid="stMetricLabel"] {font-size:.60rem !important;}
+        div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * {font-size:.62rem !important;}
+        .stButton button, .stFormSubmitButton button, .stDownloadButton button {font-size:.66rem !important;}
+        .stTextInput label, .stNumberInput label, .stSelectbox label,
+        .stDateInput label, .stTextArea label, .stCheckbox label,
+        .stRadio label, .stMultiSelect label, .stSlider label {font-size:.64rem !important;}
+        [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+        [data-testid="stTextArea"] textarea, [data-baseweb="select"] {font-size:.68rem !important;}
         @media (max-width: 900px) {
           .block-container {padding-left:1rem !important; padding-right:1rem !important;}
           [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
-          [data-testid="stAppViewContainer"] .main h1 {font-size:1.25rem !important;}
+          [data-testid="stAppViewContainer"] .main h1 {font-size:.98rem !important;}
         }
         </style>
         """,
