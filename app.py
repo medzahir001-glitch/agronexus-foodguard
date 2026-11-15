@@ -471,40 +471,6 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
 div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * { font-size: 7px !important; }
 .footer-text { font-size: 7px !important; line-height: 1.25 !important; }
 
-
-/* FOODNEXA V8 — compact charts across all application pages */
-[data-testid="stVegaLiteChart"],
-[data-testid="stArrowVegaLiteChart"],
-[data-testid="stPyplotChart"],
-[data-testid="stDeckGlJsonChart"] {
-    width: 110px !important;
-    max-width: 110px !important;
-    height: 78px !important;
-    max-height: 78px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    overflow: hidden !important;
-}
-[data-testid="stVegaLiteChart"] .vega-embed,
-[data-testid="stArrowVegaLiteChart"] .vega-embed,
-[data-testid="stVegaLiteChart"] svg,
-[data-testid="stArrowVegaLiteChart"] svg,
-[data-testid="stVegaLiteChart"] canvas,
-[data-testid="stArrowVegaLiteChart"] canvas {
-    width: 105px !important;
-    max-width: 105px !important;
-    height: 72px !important;
-    max-height: 72px !important;
-}
-[data-testid="stPyplotChart"] img,
-[data-testid="stPyplotChart"] canvas {
-    width: 105px !important;
-    max-width: 105px !important;
-    height: auto !important;
-    max-height: 78px !important;
-    object-fit: contain !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
