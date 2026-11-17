@@ -704,21 +704,23 @@ section[data-testid="stSidebar"] .block-container { padding:.8rem .8rem !importa
 .fnx-sidebar-mark { width:34px !important; height:34px !important; flex-basis:34px !important; font-size:17px !important; }
 .fnx-sidebar-name { font-size:13px !important; }
 .fnx-sidebar-tag { font-size:8px !important; }
-
-
-
 @media (max-width:760px) {
   section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { width:245px !important; min-width:245px !important; }
   .block-container, [data-testid="stMainBlockContainer"] { padding-left:.65rem !important; padding-right:.65rem !important; }
 }
 
-/* FOODNEXA V14 — compact all-page scale, while retaining readable controls */
-html { font-size: 12px !important; }
+
+
+/* FOODNEXA V15 — balanced readable scale and fully visible brand header */
+html { font-size: 13px !important; }
 .block-container, [data-testid="stMainBlockContainer"] {
-    padding-top: .22rem !important;
-    padding-left: .72rem !important;
-    padding-right: .72rem !important;
-    padding-bottom: .35rem !important;
+    max-width:none !important;
+    width:100% !important;
+    padding-top:3.15rem !important;
+    padding-left:1rem !important;
+    padding-right:1rem !important;
+    padding-bottom:.8rem !important;
+    overflow:visible !important;
 }
 [data-testid="stAppViewContainer"] .main p,
 [data-testid="stAppViewContainer"] .main li,
@@ -727,48 +729,54 @@ html { font-size: 12px !important; }
 [data-testid="stAppViewContainer"] .main small,
 [data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
 [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
-    font-size: 9px !important;
-    line-height: 1.28 !important;
+    font-size:10px !important;
+    line-height:1.35 !important;
 }
-[data-testid="stAppViewContainer"] .main h1 { font-size: 16px !important; line-height: 1.15 !important; }
-[data-testid="stAppViewContainer"] .main h2 { font-size: 13px !important; line-height: 1.15 !important; }
-[data-testid="stAppViewContainer"] .main h3 { font-size: 11px !important; line-height: 1.15 !important; }
-section[data-testid="stSidebar"] { width: 218px !important; min-width:218px !important; max-width:218px !important; }
-section[data-testid="stSidebar"] > div { width:218px !important; }
-section[data-testid="stSidebar"] .block-container { padding: .55rem .62rem !important; }
+[data-testid="stAppViewContainer"] .main h1 { font-size:18px !important; line-height:1.2 !important; }
+[data-testid="stAppViewContainer"] .main h2 { font-size:14px !important; line-height:1.2 !important; }
+[data-testid="stAppViewContainer"] .main h3 { font-size:12px !important; line-height:1.2 !important; }
+section[data-testid="stSidebar"] { width:235px !important; min-width:235px !important; max-width:235px !important; }
+section[data-testid="stSidebar"] > div { width:235px !important; }
+section[data-testid="stSidebar"] .block-container { padding:.75rem .7rem !important; }
 section[data-testid="stSidebar"] [data-testid="stRadio"] label,
 section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
 section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * {
-    font-size: 9px !important; line-height: 1.22 !important;
+    font-size:10px !important; line-height:1.3 !important;
 }
-section[data-testid="stSidebar"] [data-testid="stRadio"] label { padding: 3px 6px !important; }
 .stTextInput label, .stNumberInput label, .stSelectbox label,
 .stDateInput label, .stTextArea label, .stCheckbox label,
 .stRadio label, .stMultiSelect label, .stSlider label,
-[data-testid="stWidgetLabel"] { font-size: 8px !important; line-height:1.2 !important; }
+[data-testid="stWidgetLabel"] { font-size:9px !important; line-height:1.25 !important; }
 [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
 [data-testid="stTextArea"] textarea, [data-baseweb="select"],
-[data-baseweb="select"] *, [data-baseweb="input"] input { font-size: 9px !important; }
+[data-baseweb="select"] *, [data-baseweb="input"] input { font-size:10px !important; }
 .stButton button, .stFormSubmitButton button, .stDownloadButton button {
-    font-size: 8px !important; min-height: 23px !important; padding: 3px 7px !important;
+    font-size:9px !important; min-height:27px !important; padding:4px 9px !important;
 }
-div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * { font-size: 8px !important; }
-.foodnexa-brand-header { min-height: 58px !important; margin:0 0 5px !important; padding:5px 11px 4px !important; }
-.foodnexa-brand-header .foodnexa-brand-title { font-size:18px !important; letter-spacing:1px !important; }
-.foodnexa-brand-header .foodnexa-brand-subtitle { font-size:8px !important; margin-top:3px !important; }
-.foodnexa-brand-header .foodnexa-brand-symbol { width:26px !important; height:26px !important; font-size:16px !important; border-radius:8px !important; }
-.foodnexa-brand-header .foodnexa-brand-note { font-size:8px !important; }
-.foodnexa-brand-header .foodnexa-brand-decor { font-size:21px !important; }
-.foodnexa-brand-header .foodnexa-line { height:2px !important; min-height:2px !important; margin-top:5px !important; }
-.fnx-sidebar-brand { gap:7px !important; padding:3px 1px 7px !important; margin-bottom:7px !important; }
-.fnx-sidebar-mark { width:29px !important; height:29px !important; flex-basis:29px !important; font-size:14px !important; border-radius:9px !important; }
-.fnx-sidebar-name { font-size:11px !important; }
-.fnx-sidebar-tag { font-size:7px !important; }
+div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * { font-size:9px !important; }
+.foodnexa-brand-header {
+    min-height:76px !important;
+    height:auto !important;
+    margin:0 0 10px !important;
+    padding:9px 15px 8px !important;
+    overflow:visible !important;
+}
+.foodnexa-brand-header .foodnexa-brand-title { font-size:21px !important; line-height:1.12 !important; }
+.foodnexa-brand-header .foodnexa-brand-subtitle { font-size:9px !important; margin-top:4px !important; }
+.foodnexa-brand-header .foodnexa-brand-symbol { width:30px !important; height:30px !important; font-size:18px !important; }
+.foodnexa-brand-header .foodnexa-brand-note { font-size:9px !important; }
+.foodnexa-brand-header .foodnexa-brand-decor { font-size:24px !important; }
+.foodnexa-brand-header .foodnexa-line { height:2px !important; min-height:2px !important; margin-top:6px !important; }
+.fnx-sidebar-brand { gap:8px !important; padding:5px 1px 9px !important; margin-bottom:9px !important; }
+.fnx-sidebar-mark { width:32px !important; height:32px !important; flex-basis:32px !important; font-size:16px !important; }
+.fnx-sidebar-name { font-size:12px !important; }
+.fnx-sidebar-tag { font-size:8px !important; }
 @media (max-width:760px) {
-    section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { width:218px !important; min-width:218px !important; }
-    .block-container, [data-testid="stMainBlockContainer"] { padding-left:.5rem !important; padding-right:.5rem !important; }
-    .foodnexa-brand-header { min-height:52px !important; }
+    section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { width:235px !important; min-width:235px !important; }
+    .block-container, [data-testid="stMainBlockContainer"] { padding-top:2.8rem !important; padding-left:.65rem !important; padding-right:.65rem !important; }
+    .foodnexa-brand-header { min-height:68px !important; }
 }
+
 </style>
 """, unsafe_allow_html=True)
 
