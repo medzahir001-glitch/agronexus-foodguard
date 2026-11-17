@@ -1,19 +1,18 @@
+"""FOODNEXA compact enterprise dashboard.
+
+Uses the existing app.py render_dashboard(...) contract and existing data only.
+The dashboard is rendered in a dedicated Streamlit component iframe so HTML is
+never interpreted by Streamlit's Markdown parser as a code block.
+"""
+
 import html
 import json
 import math
-import textwrap
 import pandas as pd
-import streamlit as st
+import streamlit.components.v1 as components
 
 
-# ============================================================
-# FOODNEXA — ENTERPRISE FOOD SAFETY DASHBOARD
-# Compatible with app.py render_dashboard(...) signature.
-# Read-only rendering: this module does not modify source data.
-# ============================================================
-
-
-def _df(value):
+def _frame(value):
     if value is None:
         return pd.DataFrame()
     if isinstance(value, pd.DataFrame):
@@ -24,13 +23,11 @@ def _df(value):
         return pd.DataFrame()
 
 
-def _missing(value):
+def _is_missing(value):
     if value is None:
         return True
     if isinstance(value, str):
         return value.strip().casefold() in {"", "nan", "none", "null", "n/a", "nat"}
-    if isinstance(value, (dict, list, tuple, set)):
-        return len(value) == 0
     try:
         result = pd.isna(value)
         if getattr(result, "ndim", 0) == 0:
@@ -41,39 +38,57 @@ def _missing(value):
 
 
 def _text(value, default="—"):
-    if _missing(value):
+    if _is_missing(value):
         return default
     if isinstance(value, (dict, list, tuple)):
-        return json.dumps(value, ensure_ascii=False, default=str, sort_keys=True)
+        return json.dumps(value, ensure_ascii=False, default=str)
     return str(value).strip()
 
 
-def _column(frame, names):
+def _esc(value, default="—"):
+    return html.escape(_text(value, default), quote=True)
+
+
+def _find_column(frame, candidates):
     if frame.empty:
         return None
-    lookup = {str(col).strip().casefold(): col for col in frame.columns}
-    for name in names:
-        if name.casefold() in lookup:
-            return lookup[name.casefold()]
+    lookup = {str(column).strip().casefold(): column for column in frame.columns}
+    for candidate in candidates:
+        found = lookup.get(candidate.casefold())
+        if found is not None:
+            return found
     return None
 
 
-def _value(row, names, default="—"):
-    for name in names:
-        if name in row.index and not _missing(row[name]):
-            return _text(row[name], default)
+def _row_value(row, candidates, default="—"):
+    for candidate in candidates:
+        if candidate in row.index and not _is_missing(row[candidate]):
+            return _text(row[candidate], default)
     return default
 
 
-def _risk_label(value):
+def _risk(value):
     raw = _text(value, "").casefold()
-    mapping = {
-        "faible": "Faible", "low": "Faible",
-        "modéré": "Modéré", "modere": "Modéré",
-        "moderate": "Modéré", "medium": "Modéré",
-        "élevé": "Élevé", "eleve": "Élevé", "high": "Élevé",
-    }
-    return mapping.get(raw, _text(value, "—"))
+    if raw in {"faible", "low", "low risk"}:
+        return "Faible"
+    if raw in {"modéré", "modere", "moderate", "medium"}:
+        return "Modéré"
+    if raw in {"élevé", "eleve", "high", "high risk"}:
+        return "Élevé"
+    return _text(value, "—")
+
+
+def _status(value):
+    raw = _text(value, "").casefold()
+    if any(token in raw for token in ("élevé", "eleve", "high", "risk")):
+        return "danger"
+    if any(token in raw for token in ("modéré", "modere", "moderate", "medium")):
+        return "warning"
+    if any(token in raw for token in ("faible", "low", "conforme", "success", "available", "disponible")):
+        return "success"
+    if "research" in raw or "observation" in raw:
+        return "info"
+    return "neutral"
 
 
 def _quality_score(report):
@@ -91,410 +106,274 @@ def _quality_score(report):
     return None
 
 
-def _safe_duplicates(frame):
+def _duplicates(frame):
     if frame.empty:
         return 0
-    seen = set()
-    duplicates = 0
-    for row in frame.itertuples(index=False, name=None):
-        normalized = tuple(
-            json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
-            if isinstance(value, (dict, list, tuple))
-            else (None if _missing(value) else str(value))
-            for value in row
-        )
-        if normalized in seen:
-            duplicates += 1
-        else:
-            seen.add(normalized)
-    return duplicates
+    try:
+        return int(frame.astype("string").fillna("").duplicated().sum())
+    except Exception:
+        return 0
 
 
-def _engine_issues(report):
-    if not isinstance(report, dict):
-        return []
-    raw = report.get("issues", [])
-    if not isinstance(raw, list):
-        return []
-    output = []
-    for item in raw[:40]:
-        if isinstance(item, dict):
-            output.append({
-                "Ligne": item.get("Ligne", item.get("row", "—")),
-                "Champ": item.get("Champ", item.get("field", "—")),
-                "Anomalie": item.get(
-                    "Problème",
-                    item.get("issue", item.get("message", item.get("type", "À vérifier"))),
-                ),
-                "Niveau": item.get(
-                    "Niveau",
-                    item.get("priority", item.get("severity", "À vérifier")),
-                ),
-            })
-        else:
-            output.append({"Ligne": "—", "Champ": "—", "Anomalie": str(item), "Niveau": "À vérifier"})
-    return output
+def _date_text(value):
+    text = _text(value)
+    if text == "—":
+        return text
+    try:
+        stamp = pd.to_datetime(text, errors="coerce", utc=True)
+        if pd.isna(stamp):
+            return text[:19]
+        return stamp.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return text[:19]
 
 
-def _status_class(value):
-    raw = _text(value, "").casefold()
-    if any(token in raw for token in ("élevé", "eleve", "high", "risk")):
-        return "danger"
-    if any(token in raw for token in ("modéré", "modere", "moderate", "medium")):
-        return "warning"
-    if any(token in raw for token in ("faible", "low", "conforme", "success")):
-        return "success"
-    if "research" in raw or "observation" in raw:
-        return "info"
-    return "neutral"
-
-
-def _pill(value):
-    safe = html.escape(_text(value))
-    return f'<span class="fnx-pill fnx-pill-{_status_class(value)}">{safe}</span>'
-
-
-def _kpi_card(label, value, detail, icon, accent="green"):
-    accents = {
-        "green": ("#16834A", "#E5F7EC"),
-        "red": ("#D92D20", "#FDECEC"),
-        "teal": ("#187A70", "#E5F5F2"),
-    }
-    color, soft = accents.get(accent, accents["green"])
-    return f"""
-    <article class="fnx-kpi-card" style="--kpi-accent:{color};--kpi-soft:{soft}">
-      <div class="fnx-kpi-copy">
-        <div class="fnx-kpi-label">{html.escape(label)}</div>
-        <div class="fnx-kpi-value">{html.escape(str(value))}</div>
-        <div class="fnx-kpi-detail">{html.escape(detail)}</div>
-      </div>
-      <div class="fnx-kpi-icon">{html.escape(icon)}</div>
-    </article>
-    """
-
-
-def _table_html(headers, rows, result_column=None):
-    header_html = "".join(f"<th>{html.escape(str(item))}</th>" for item in headers)
-    row_html = []
-    for row in rows:
-        cells = []
-        for index, key in enumerate(headers):
-            value = row.get(key, "—")
-            if key == result_column:
-                cell = _pill(value)
-            else:
-                cell = html.escape(_text(value))
-            cells.append(f"<td>{cell}</td>")
-        row_html.append("<tr>" + "".join(cells) + "</tr>")
-    if not row_html:
-        row_html = [f'<tr><td class="fnx-empty-row" colspan="{len(headers)}">No records available yet</td></tr>']
-    return f"""
-    <div class="fnx-table-scroll">
-      <table class="fnx-table"><thead><tr>{header_html}</tr></thead>
-      <tbody>{''.join(row_html)}</tbody></table>
-    </div>
-    """
-
-
-def _make_activity(history, research):
+def _activity_rows(history, research, limit=6):
     records = []
     for _, row in history.iterrows():
+        date_value = _row_value(row, ["analysis_date", "created_at", "date"])
         records.append({
-            "Date": _value(row, ["analysis_date", "created_at", "date"]),
-            "Sample ID": _value(row, ["batch_id", "sample_id", "sample_ref"]),
-            "Product": _value(row, ["product_name", "product"]),
-            "Result": _risk_label(_value(row, ["risk_level", "expert_risk_label"], "—")),
-            "_kind": "analysis",
+            "Date": _date_text(date_value),
+            "Sample ID": _row_value(row, ["batch_id", "sample_id", "sample_ref"]),
+            "Product": _row_value(row, ["product_name", "product"]),
+            "Result": _risk(_row_value(row, ["risk_level", "expert_risk_label", "predicted_risk"])),
+            "_sort": date_value,
         })
     for _, row in research.iterrows():
+        date_value = _row_value(row, ["analysis_date", "created_at", "sampling_date", "date"])
         records.append({
-            "Date": _value(row, ["analysis_date", "created_at", "sampling_date", "date"]),
-            "Sample ID": _value(row, ["batch_id", "sample_id", "sample_ref"]),
-            "Product": _value(row, ["product_name", "product"]),
+            "Date": _date_text(date_value),
+            "Sample ID": _row_value(row, ["batch_id", "sample_id", "sample_ref"]),
+            "Product": _row_value(row, ["product_name", "product"]),
             "Result": "Research observation",
-            "_kind": "research",
+            "_sort": date_value,
         })
     if not records:
         return []
-    frame = pd.DataFrame(records)
-    frame["_sort"] = pd.to_datetime(frame["Date"].replace("—", pd.NA), errors="coerce", utc=True)
-    frame = frame.sort_values("_sort", ascending=False, na_position="last")
-    return frame.head(6).drop(columns="_sort").to_dict(orient="records")
+    result = pd.DataFrame(records)
+    result["_parsed"] = pd.to_datetime(result["_sort"].replace("—", pd.NA), errors="coerce", utc=True)
+    result = result.sort_values("_parsed", ascending=False, na_position="last")
+    return result.head(limit).drop(columns=["_sort", "_parsed"]).to_dict("records")
 
 
-def _make_history(history):
-    rows = []
+def _history_rows(history, limit=4):
     if history.empty:
-        return rows
-    for _, row in history.tail(7).iloc[::-1].iterrows():
+        return []
+    rows = []
+    for _, row in history.tail(limit).iloc[::-1].iterrows():
         rows.append({
-            "Date": _value(row, ["analysis_date", "created_at", "date"]),
-            "Sample ID": _value(row, ["batch_id", "sample_id", "sample_ref"]),
-            "Product": _value(row, ["product_name", "product"]),
-            "Analyst": _value(row, ["analyst", "analyst_name", "operator"]),
-            "Result": _risk_label(_value(row, ["risk_level", "expert_risk_label"], "—")),
+            "Date": _date_text(_row_value(row, ["analysis_date", "created_at", "date"])),
+            "Sample ID": _row_value(row, ["batch_id", "sample_id", "sample_ref"]),
+            "Product": _row_value(row, ["product_name", "product"]),
+            "Analyst": _row_value(row, ["analyst", "analyst_name", "operator"]),
+            "Result": _risk(_row_value(row, ["risk_level", "expert_risk_label", "predicted_risk"])),
         })
     return rows
 
 
-def _donut_html(low, other):
-    total = low + other
-    if total <= 0:
-        percent = 0
-        label = "No data"
+def _table(headers, rows, result_key="Result"):
+    head = "".join(f"<th>{_esc(label)}</th>" for label in headers)
+    body = []
+    if not rows:
+        body.append(f'<tr><td class="empty" colspan="{len(headers)}">No records available yet</td></tr>')
     else:
-        percent = round((low / total) * 100)
-        label = f"{percent}%"
-    safe_percent = max(0, min(100, percent))
-    return f"""
-    <div class="fnx-donut-area">
-      <div class="fnx-donut" style="--low:{safe_percent}%">
-        <div class="fnx-donut-center"><strong>{label}</strong><small>Low risk</small></div>
-      </div>
-      <div class="fnx-legend">
-        <span><i class="fnx-legend-dot green"></i>Low Risk <b>({low})</b></span>
-        <span><i class="fnx-legend-dot red"></i>Moderate / High Risk <b>({other})</b></span>
-      </div>
-    </div>
-    """
+        for row in rows:
+            cells = []
+            for label in headers:
+                value = row.get(label, "—")
+                if label == result_key:
+                    cells.append(f'<td><span class="pill {_status(value)}">{_esc(value)}</span></td>')
+                else:
+                    cells.append(f'<td title="{_esc(value)}">{_esc(value)}</td>')
+            body.append("<tr>" + "".join(cells) + "</tr>")
+    return '<div class="table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + ''.join(body) + '</tbody></table></div>'
 
 
-def _category_chart_html(research):
-    category_col = _column(research, ["product_category", "category", "product_name"])
-    if category_col is None or research.empty:
-        return '<div class="fnx-chart-empty">Categories will appear after research observations are recorded.</div>'
-    values = research[category_col].map(lambda value: _text(value, "")).replace("", pd.NA).dropna().value_counts().head(6)
-    if values.empty:
-        return '<div class="fnx-chart-empty">No product category has been entered yet.</div>'
-    max_value = max(1, int(values.max()))
+def _category_values(research):
+    names = ["Dairy", "Vegetal", "Cereals", "Meat", "Seafood", "Beverages"]
+    counts = {name: 0 for name in names}
+    col = _find_column(research, ["product_category", "category", "product_name", "product"])
+    if col is None or research.empty:
+        return counts
+    for value in research[col].tolist():
+        raw = _text(value, "").casefold()
+        if not raw:
+            continue
+        if any(key in raw for key in ("dairy", "lait", "milk", "fromage", "yaourt")):
+            counts["Dairy"] += 1
+        elif any(key in raw for key in ("vegetal", "végétal", "plant", "vegetable")):
+            counts["Vegetal"] += 1
+        elif any(key in raw for key in ("cereal", "céréale", "grain", "farine")):
+            counts["Cereals"] += 1
+        elif any(key in raw for key in ("meat", "viande", "beef", "poultry", "poulet")):
+            counts["Meat"] += 1
+        elif any(key in raw for key in ("seafood", "fish", "poisson", "sea food", "crustacé")):
+            counts["Seafood"] += 1
+        elif any(key in raw for key in ("beverage", "boisson", "drink", "jus")):
+            counts["Beverages"] += 1
+    return counts
+
+
+def _category_chart(research):
+    counts = _category_values(research)
+    maximum = max(counts.values()) if counts else 0
     columns = []
-    for label, count in values.items():
-        height = max(7, int((int(count) / max_value) * 104))
-        short_label = str(label)
-        if len(short_label) > 16:
-            short_label = short_label[:14] + "…"
-        columns.append(f"""
-        <div class="fnx-bar-column" title="{html.escape(str(label))}: {int(count)}">
-          <b class="fnx-bar-value">{int(count)}</b>
-          <div class="fnx-bar-track"><div class="fnx-bar" style="height:{height}px"></div></div>
-          <span class="fnx-bar-label">{html.escape(short_label)}</span>
-        </div>
-        """)
-    return f'<div class="fnx-category-chart">{"".join(columns)}</div>'
+    for label, value in counts.items():
+        height = 5 if maximum == 0 else max(5, round((value / maximum) * 76))
+        columns.append(
+            f'<div class="bar-col"><span class="bar-value">{value}</span>'
+            f'<div class="bar-track"><div class="bar" style="height:{height}px"></div></div>'
+            f'<span class="bar-label">{_esc(label)}</span></div>'
+        )
+    return '<div class="category-chart">' + ''.join(columns) + '</div>'
 
 
-def _install_dashboard_style():
-    st.markdown(
-        textwrap.dedent(
-            """
-        <style>
-        :root {
-          --fnx-deep:#064B32;
-          --fnx-green:#12834B;
-          --fnx-green-dark:#0B6840;
-          --fnx-mint:#E8F6EE;
-          --fnx-paper:#F4F8F7;
-          --fnx-ink:#172B24;
-          --fnx-muted:#6D7E76;
-          --fnx-border:#DCE9E2;
-          --fnx-danger:#D92D20;
-        }
-        [data-testid="stAppViewContainer"], [data-testid="stMain"],
-        [data-testid="stMainBlockContainer"], .main {
-          background:var(--fnx-paper) !important;
-        }
-        .block-container, [data-testid="stMainBlockContainer"] {
-          max-width:none !important;
-          width:100% !important;
-          padding:1.0rem 1.15rem 1.5rem !important;
-        }
-        [data-testid="stSidebar"] {
-          background:#FFFFFF !important;
-          border-right:1px solid var(--fnx-border) !important;
-        }
-        [data-testid="stSidebar"] * { color:var(--fnx-ink) !important; }
-        [data-testid="stDataFrame"] { background:#FFFFFF !important; }
-        .fnx-dashboard-wrap { width:100%; color:var(--fnx-ink); }
-        .fnx-page-heading {
-          display:flex; align-items:center; gap:12px;
-          margin:2px 0 4px; color:var(--fnx-deep);
-          font-size:21px; line-height:1.15; font-weight:850;
-        }
-        .fnx-page-heading-icon {
-          width:34px; height:34px; border-radius:10px;
-          display:grid; place-items:center; flex:0 0 34px;
-          color:#FFFFFF; background:linear-gradient(145deg,#169653,#075C3A);
-          font-size:18px; box-shadow:0 4px 10px rgba(6,75,50,.15);
-        }
-        .fnx-page-subtitle { color:var(--fnx-muted); font-size:11px; margin:0 0 17px 46px; }
-        .fnx-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:0 0 18px; }
-        .fnx-kpi-card {
-          display:flex; align-items:center; justify-content:space-between; gap:8px;
-          min-height:92px; box-sizing:border-box; padding:13px 15px;
-          background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-top:3px solid var(--kpi-accent); border-radius:14px;
-          box-shadow:0 5px 16px rgba(22,72,48,.06);
-        }
-        .fnx-kpi-copy { min-width:0; }
-        .fnx-kpi-label { color:#456257; font-size:11px; font-weight:750; margin-bottom:4px; }
-        .fnx-kpi-value { color:var(--fnx-deep); font-size:23px; line-height:1.08; font-weight:850; letter-spacing:-.4px; }
-        .fnx-kpi-detail { color:#7A8982; font-size:10px; margin-top:5px; }
-        .fnx-kpi-icon {
-          width:45px; height:45px; flex:0 0 45px; border-radius:50%;
-          display:grid; place-items:center; color:var(--kpi-accent);
-          background:var(--kpi-soft); font-size:21px; font-weight:800;
-        }
-        .fnx-content-grid { display:grid; grid-template-columns:minmax(270px,.82fr) minmax(480px,1.85fr); gap:15px; align-items:start; }
-        .fnx-left-stack, .fnx-right-stack { display:flex; flex-direction:column; gap:14px; min-width:0; }
-        .fnx-panel {
-          background:#FFFFFF; border:1px solid var(--fnx-border); border-radius:14px;
-          padding:14px 15px; box-shadow:0 4px 14px rgba(22,72,48,.045); min-width:0;
-        }
-        .fnx-panel-title { display:flex; align-items:center; gap:8px; color:var(--fnx-deep); font-size:14px; font-weight:850; margin:0 0 12px; padding:0 0 9px; border-bottom:1px solid #E5EEE9; }
-        .fnx-panel-title-icon { color:var(--fnx-green); font-size:16px; }
-        .fnx-donut-area { display:flex; align-items:center; flex-direction:column; gap:12px; padding:2px 0 1px; }
-        .fnx-donut {
-          width:174px; height:174px; border-radius:50%; display:grid; place-items:center;
-          background:conic-gradient(#14834A 0 var(--low),#D92D20 var(--low) 100%);
-          position:relative;
-        }
-        .fnx-donut:before { content:""; position:absolute; inset:17px; border-radius:50%; background:#FFFFFF; }
-        .fnx-donut-center { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        .fnx-donut-center strong { color:var(--fnx-deep); font-size:26px; line-height:1.1; font-weight:850; }
-        .fnx-donut-center small { color:#87938D; font-size:10px; margin-top:3px; }
-        .fnx-legend { display:flex; gap:15px; flex-wrap:wrap; justify-content:center; color:#586B61; font-size:10px; }
-        .fnx-legend span { display:inline-flex; align-items:center; gap:5px; }
-        .fnx-legend b { color:var(--fnx-ink); }
-        .fnx-legend-dot { width:9px; height:9px; border-radius:2px; display:inline-block; }
-        .fnx-legend-dot.green { background:#14834A; }
-        .fnx-legend-dot.red { background:#D92D20; }
-        .fnx-chart-note { color:#87938D; font-size:9px; line-height:1.35; margin-top:8px; }
-        .fnx-category-chart { height:157px; display:flex; align-items:flex-end; gap:9px; padding:5px 6px 0; border-bottom:1px solid #DCE9E2; background:repeating-linear-gradient(to top,transparent 0,transparent 37px,#EEF3F0 38px); }
-        .fnx-bar-column { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:center; justify-content:flex-end; flex-direction:column; gap:4px; }
-        .fnx-bar-value { color:#27483A; font-size:10px; font-weight:800; }
-        .fnx-bar-track { height:108px; width:min(100%,46px); display:flex; align-items:flex-end; justify-content:center; }
-        .fnx-bar { width:100%; min-height:5px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#28A45F,#08713D); box-shadow:0 2px 5px rgba(6,75,50,.12); }
-        .fnx-bar-label { color:#62766B; font-size:9px; text-align:center; line-height:1.15; min-height:21px; overflow-wrap:anywhere; }
-        .fnx-chart-empty { min-height:130px; display:grid; place-items:center; text-align:center; color:#87938D; font-size:11px; padding:10px; }
-        .fnx-table-scroll { width:100%; overflow-x:auto; }
-        .fnx-table { width:100%; border-collapse:separate; border-spacing:0; font-size:11px; color:var(--fnx-ink); }
-        .fnx-table th { background:#EAF5EF; color:#234C3A; font-weight:800; font-size:10px; text-align:left; padding:9px 10px; border-bottom:1px solid #D9E8E0; white-space:nowrap; }
-        .fnx-table td { padding:8px 10px; border-bottom:1px solid #E8EFEB; color:#344A40; font-size:10px; white-space:nowrap; }
-        .fnx-table tbody tr:nth-child(even) td { background:#FBFDFC; }
-        .fnx-table tbody tr:last-child td { border-bottom:0; }
-        .fnx-empty-row { color:#8A9891 !important; text-align:center; padding:18px !important; }
-        .fnx-pill { display:inline-block; padding:3px 8px; border-radius:20px; font-size:9px; font-weight:800; }
-        .fnx-pill-success { background:#DDF6E5; color:#087443; }
-        .fnx-pill-danger { background:#FDE6E4; color:#B42318; }
-        .fnx-pill-warning { background:#FFF1D6; color:#9A5B00; }
-        .fnx-pill-info { background:#E3F2ED; color:#116B52; }
-        .fnx-pill-neutral { background:#EEF2EF; color:#5D6B63; }
-        .fnx-disclaimer { color:#7A8982; font-size:9px; line-height:1.4; margin:10px 2px 0; }
-        @media (max-width:1050px) {
-          .fnx-content-grid { grid-template-columns:minmax(240px,.8fr) minmax(0,1.5fr); }
-          .fnx-kpi-grid { gap:9px; }
-          .fnx-kpi-card { padding:10px; }
-          .fnx-kpi-icon { width:36px; height:36px; flex-basis:36px; }
-        }
-        @media (max-width:820px) {
-          .fnx-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-          .fnx-content-grid { grid-template-columns:1fr; }
-        }
-        @media (max-width:520px) {
-          .fnx-page-heading { font-size:18px; }
-          .fnx-kpi-grid { gap:8px; }
-          .fnx-kpi-card { min-height:80px; padding:9px; }
-          .fnx-kpi-label { font-size:10px; }
-          .fnx-kpi-value { font-size:19px; }
-          .fnx-kpi-icon { display:none; }
-          .fnx-panel { padding:11px; }
-          .fnx-donut { width:150px; height:150px; }
-          .fnx-table th, .fnx-table td { padding:7px; font-size:9px; }
-        }
-        </style>
-            """
-        ),
-        unsafe_allow_html=True,
+def _quality_issues(report):
+    if not isinstance(report, dict):
+        return []
+    issues = report.get("issues", [])
+    if not isinstance(issues, list):
+        return []
+    output = []
+    for item in issues[:12]:
+        if isinstance(item, dict):
+            output.append(_text(item.get("message", item.get("issue", item.get("Problème", item.get("type", "Review required"))))))
+        else:
+            output.append(str(item))
+    return output
+
+
+def _document(history, research, quality_report, pipeline_status, low, other, high):
+    total_risk = low + other
+    low_share = 0 if total_risk == 0 else round(low / total_risk * 100)
+    angle = low_share * 3.6
+    ring = (
+        f"conic-gradient(#13854B 0 {angle}deg, #D92D20 {angle}deg 360deg)"
+        if total_risk else "conic-gradient(#D9E2DC 0 360deg)"
     )
+    score = _quality_score(quality_report)
+    score_label = f"{score:.1f}%" if score is not None else "N/D"
+    activity = _table(["Date", "Sample ID", "Product", "Result"], _activity_rows(history, research), "Result")
+    history_table = _table(["Date", "Sample ID", "Product", "Analyst", "Result"], _history_rows(history), "Result")
+    issues = _quality_issues(quality_report)
+    issue_html = "".join(f"<li>{_esc(issue)}</li>" for issue in issues) or '<li>No quality issue was returned by the current report.</li>'
+    pipeline = []
+    if isinstance(pipeline_status, dict):
+        for name, status in pipeline_status.items():
+            label = "Available" if status is True else "Unavailable" if status is False else "Not confirmed"
+            css = "success" if status is True else "danger" if status is False else "neutral"
+            pipeline.append(f'<span class="status {css}">{_esc(name)}: {label}</span>')
+    pipeline_html = "".join(pipeline) or '<span class="status neutral">System status not supplied</span>'
+
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{{--deep:#064B32;--green:#13854B;--muted:#6D7E76;--border:#DCE9E2;--ink:#172B24;--paper:#F3F8F5;}}
+*{{box-sizing:border-box;}}
+html,body{{margin:0;padding:0;width:100%;background:var(--paper);font-family:Inter,Arial,sans-serif;color:var(--ink);}}
+body{{overflow-x:hidden;}}
+.shell{{width:100%;padding:2px 3px 3px;display:flex;flex-direction:column;gap:6px;}}
+.heading{{display:flex;align-items:center;gap:7px;min-height:25px;}}
+.heading-icon{{width:24px;height:24px;flex:0 0 24px;border-radius:7px;background:linear-gradient(145deg,#169653,#075C3A);color:white;display:grid;place-items:center;font-size:13px;box-shadow:0 2px 5px #0b684026;}}
+.heading-title{{font-size:15px;font-weight:850;color:var(--deep);line-height:1.1;}}
+.subtitle{{font-size:8px;color:var(--muted);margin:-2px 0 0 31px;line-height:1.25;}}
+.kpis{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}}
+.kpi{{height:60px;background:#fff;border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:9px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:5px;box-shadow:0 2px 6px #1648300b;min-width:0;}}
+.kpi-label{{font-size:8px;font-weight:750;color:#456257;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+.kpi-value{{font-size:17px;font-weight:850;line-height:1.05;color:var(--deep);margin-top:2px;}}
+.kpi-detail{{font-size:7px;color:#7A8982;margin-top:2px;}}
+.kpi-icon{{width:27px;height:27px;flex:0 0 27px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--accent);font-size:14px;font-weight:800;}}
+.content{{display:grid;grid-template-columns:minmax(205px,.72fr) minmax(0,1.78fr);gap:7px;align-items:stretch;}}
+.stack{{display:flex;flex-direction:column;gap:6px;min-width:0;}}
+.panel{{background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px 8px;box-shadow:0 2px 6px #16483009;min-width:0;overflow:hidden;}}
+.panel.top{{height:165px;}}
+.panel.bottom{{height:132px;}}
+.panel-title{{display:flex;align-items:center;gap:5px;border-bottom:1px solid #E5EEE9;padding:0 0 4px;margin:0 0 5px;font-size:9px;font-weight:850;color:var(--deep);}}
+.panel-icon{{font-size:11px;color:var(--green);}}
+.donut-area{{height:112px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:0 0 1px;}}
+.donut{{width:80px;height:80px;border-radius:50%;background:{ring};display:grid;place-items:center;position:relative;}}
+.donut:before{{content:"";position:absolute;inset:10px;border-radius:50%;background:#fff;}}
+.donut-center{{position:relative;z-index:1;text-align:center;}}
+.donut-center strong{{display:block;font-size:16px;line-height:1.05;color:var(--deep);}}
+.donut-center span{{font-size:7px;color:#829089;}}
+.legend{{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;font-size:7px;color:#586B61;}}
+.legend-item{{display:flex;align-items:center;gap:3px;white-space:nowrap;}}
+.dot{{width:6px;height:6px;border-radius:2px;display:inline-block;}}
+.dot.green{{background:#13854B;}}.dot.red{{background:#D92D20;}}
+.chart-note{{font-size:6.5px;color:#87938D;line-height:1.2;margin-top:3px;}}
+.table-wrap{{width:100%;overflow:hidden;}}
+table{{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5px;}}
+th{{text-align:left;background:#EAF5EF;color:#234C3A;font-size:7.5px;font-weight:800;padding:3px 4px;border:1px solid #D9E8E0;white-space:nowrap;}}
+td{{font-size:7.5px;color:#344A40;padding:3px 4px;border:1px solid #E8EFEB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+tbody tr:nth-child(even) td{{background:#FBFDFC;}}
+.pill{{display:inline-block;max-width:100%;border-radius:10px;padding:2px 4px;font-size:6.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}}
+.pill.success{{background:#DDF6E5;color:#087443;}}.pill.danger{{background:#FDE6E4;color:#B42318;}}.pill.warning{{background:#FFF1D6;color:#9A5B00;}}.pill.info{{background:#E3F2ED;color:#116B52;}}.pill.neutral{{background:#EEF2EF;color:#5D6B63;}}
+.empty{{text-align:center;color:#87938D;padding:8px 4px;}}
+.category-chart{{height:72px;display:flex;align-items:flex-end;gap:4px;padding:2px 4px 0;border-bottom:1px solid #DCE9E2;background:repeating-linear-gradient(to top,transparent 0,transparent 17px,#EEF3F0 18px);}}
+.bar-col{{flex:1 1 0;min-width:0;height:100%;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;gap:1px;}}
+.bar-value{{font-size:7px;color:#27483A;font-weight:800;}}
+.bar-track{{height:49px;width:min(100%,25px);display:flex;align-items:flex-end;justify-content:center;}}
+.bar{{width:100%;min-height:4px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#28A45F,#08713D);}}
+.bar-label{{font-size:6.5px;color:#62766B;text-align:center;line-height:1.05;white-space:nowrap;}}
+.disclaimer{{font-size:6.5px;line-height:1.2;color:#7A8982;padding:0 2px;}}
+details{{margin-top:0;background:#fff;border:1px solid var(--border);border-radius:7px;padding:3px 6px;}}
+summary{{font-size:7px;font-weight:750;color:var(--deep);cursor:pointer;}}
+.detail-body{{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px 2px 2px;font-size:7px;color:#52665B;}}
+.detail-body ul{{margin:4px 0 0;padding-left:15px;}}
+.status{{display:inline-block;margin:2px 3px 0 0;padding:2px 4px;border-radius:10px;font-size:6.5px;background:#EEF2EF;color:#5D6B63;}}
+.status.success{{background:#DDF6E5;color:#087443;}}.status.danger{{background:#FDE6E4;color:#B42318;}}
+@media(max-width:900px){{.content{{grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr);}}.kpi{{padding:5px;}}.kpi-label{{font-size:7px;}}.kpi-icon{{width:23px;height:23px;flex-basis:23px;font-size:12px;}}}}
+@media(max-width:680px){{.kpis{{grid-template-columns:repeat(2,minmax(0,1fr));}}.content{{grid-template-columns:1fr;}}.panel.top,.panel.bottom{{height:auto;min-height:130px;}}.detail-body{{grid-template-columns:1fr;}}}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div>
+    <div class="heading"><span class="heading-icon">⌂</span><span class="heading-title">Dashboard</span></div>
+    <div class="subtitle">Monitoring agro-food quality, food safety risks and research data</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi" style="--accent:#13854B;--soft:#E5F7EC"><div><div class="kpi-label">Total Analyses</div><div class="kpi-value">{len(history)}</div><div class="kpi-detail">Risk assessments</div></div><div class="kpi-icon">▥</div></div>
+    <div class="kpi" style="--accent:#187A70;--soft:#E5F5F2"><div><div class="kpi-label">Research Observations</div><div class="kpi-value">{len(research)}</div><div class="kpi-detail">Scientific records</div></div><div class="kpi-icon">▤</div></div>
+    <div class="kpi" style="--accent:#D92D20;--soft:#FDECEC"><div><div class="kpi-label">High Risk</div><div class="kpi-value">{high}</div><div class="kpi-detail">Requires attention</div></div><div class="kpi-icon">⚠</div></div>
+    <div class="kpi" style="--accent:#13854B;--soft:#E5F7EC"><div><div class="kpi-label">Data Quality</div><div class="kpi-value">{score_label}</div><div class="kpi-detail">Dataset quality score</div></div><div class="kpi-icon">✓</div></div>
+  </div>
+  <div class="content">
+    <div class="stack">
+      <section class="panel top"><h3 class="panel-title"><span class="panel-icon">◉</span>Risk Distribution</h3>
+        <div class="donut-area"><div class="donut"><div class="donut-center"><strong>{low_share if total_risk else '—'}{'%' if total_risk else ''}</strong><span>Low risk share</span></div></div>
+        <div class="legend"><span class="legend-item"><i class="dot green"></i>Low Risk ({low})</span><span class="legend-item"><i class="dot red"></i>Moderate / High ({other})</span></div></div>
+        <div class="chart-note">Risk-level distribution; not a regulatory conformity decision.</div>
+      </section>
+      <section class="panel bottom"><h3 class="panel-title"><span class="panel-icon">▥</span>Analyses by Product Category</h3>{_category_chart(research)}</section>
+    </div>
+    <div class="stack">
+      <section class="panel top"><h3 class="panel-title"><span class="panel-icon">▤</span>Recent Activity</h3>{activity}</section>
+      <section class="panel bottom"><h3 class="panel-title"><span class="panel-icon">◷</span>Analysis History</h3>{history_table}</section>
+    </div>
+  </div>
+  <div class="disclaimer">FOODNEXA is an experimental food-safety risk-intelligence prototype. Indicators do not replace laboratory analyses, scientific expertise or applicable regulatory requirements.</div>
+  <details><summary>Data Quality &amp; System Status</summary><div class="detail-body"><div><b>Quality review</b><ul>{issue_html}</ul><div style="margin-top:5px">Exact duplicate rows: {_duplicates(research)}</div></div><div><b>System pipeline</b><div>{pipeline_html}</div></div></div></details>
+</div>
+</body>
+</html>'''
 
 
 def render_dashboard(history_data=None, research_data=None, quality_report=None, pipeline_status=None):
-    """Render the live FOODNEXA dashboard using the existing data sources."""
-    _install_dashboard_style()
-
-    history = _df(history_data)
-    research = _df(research_data)
-
-    risk_col = _column(history, ["risk_level", "expert_risk_label"])
-    levels = history[risk_col].map(_risk_label) if risk_col else pd.Series(dtype="object")
-    low = int((levels == "Faible").sum())
-    moderate = int((levels == "Modéré").sum())
-    high = int((levels == "Élevé").sum())
-
-    score = _quality_score(quality_report)
-    score_text = f"{score:.1f}%" if score is not None else "N/D"
-    activity_rows = _make_activity(history, research)
-    history_rows = _make_history(history)
-
-    html_parts = [
-        '<div class="fnx-dashboard-wrap">',
-        '<div class="fnx-page-heading"><span class="fnx-page-heading-icon">⌂</span><span>Dashboard</span></div>',
-        '<div class="fnx-page-subtitle">Monitoring agro-food quality, food safety risks and research data</div>',
-        '<div class="fnx-kpi-grid">',
-        _kpi_card("Total Analyses", len(history), "Risk assessments", "▥", "green"),
-        _kpi_card("Research Observations", len(research), "Scientific records", "▤", "teal"),
-        _kpi_card("High Risk", high, "Requires attention", "⚠", "red"),
-        _kpi_card("Data Quality", score_text, "Dataset quality score", "✓", "green"),
-        '</div>',
-        '<div class="fnx-content-grid">',
-        '<div class="fnx-left-stack">',
-        '<section class="fnx-panel"><h3 class="fnx-panel-title"><span class="fnx-panel-title-icon">◉</span>Risk Distribution</h3>',
-        _donut_html(low, moderate + high),
-        '<div class="fnx-chart-note">Risk-level distribution only; this is not a regulatory conformity decision.</div></section>',
-        '<section class="fnx-panel"><h3 class="fnx-panel-title"><span class="fnx-panel-title-icon">▥</span>Analyses by Product Category</h3>',
-        _category_chart_html(research),
-        '</section>',
-        '</div>',
-        '<div class="fnx-right-stack">',
-        '<section class="fnx-panel"><h3 class="fnx-panel-title"><span class="fnx-panel-title-icon">▤</span>Recent Activity</h3>',
-        _table_html(["Date", "Sample ID", "Product", "Result"], activity_rows, "Result"),
-        '</section>',
-        '<section class="fnx-panel"><h3 class="fnx-panel-title"><span class="fnx-panel-title-icon">◷</span>Analysis History</h3>',
-        _table_html(["Date", "Sample ID", "Product", "Analyst", "Result"], history_rows, "Result"),
-        '</section>',
-        '</div></div>',
-        '<div class="fnx-disclaimer">FOODNEXA is an experimental food-safety risk-intelligence prototype. Its indicators do not replace laboratory analyses, scientific expertise or applicable regulatory requirements.</div>',
-        '</div>',
-    ]
-    # IMPORTANT: Streamlit's Markdown parser treats indented HTML lines as code blocks.
-    # The card/table/chart helpers return multi-line HTML with indentation, so normalize
-    # the final HTML before rendering to ensure tags are interpreted as HTML, not text.
-    dashboard_html = "\n".join(html_parts)
-    dashboard_html = "\n".join(line.lstrip() for line in dashboard_html.splitlines())
-    st.markdown(dashboard_html, unsafe_allow_html=True)
-
-    with st.expander("Data Quality & System Status", expanded=False):
-        quality_score = f"{score:.1f}%" if score is not None else "N/D"
-        q1, q2, q3 = st.columns(3)
-        q1.metric("Quality Score", quality_score)
-        q2.metric("Research Observations", len(research))
-        q3.metric("Exact Duplicates", _safe_duplicates(research))
-
-        issues = _engine_issues(quality_report)
-        if issues:
-            st.markdown("**Quality issues to review**")
-            st.dataframe(pd.DataFrame(issues), use_container_width=True, hide_index=True)
-        elif research.empty:
-            st.info("En attente de données pour le contrôle qualité.")
-        else:
-            st.success("Aucune anomalie signalée par le rapport qualité.")
-
-        if isinstance(pipeline_status, dict) and pipeline_status:
-            st.markdown("**FOODNEXA System Pipeline**")
-            for name, status in pipeline_status.items():
-                if status is True:
-                    st.success(f"{name} — Disponible")
-                elif status is False:
-                    st.warning(f"{name} — Indisponible")
-                else:
-                    st.info(f"{name} — Statut non confirmé")
+    """Render compact live dashboard; source data is never changed."""
+    history = _frame(history_data)
+    research = _frame(research_data)
+    risk_column = _find_column(history, ["risk_level", "expert_risk_label", "risk_category", "predicted_risk"])
+    if risk_column is not None:
+        levels = history[risk_column].map(_risk)
+        low = int((levels == "Faible").sum())
+        moderate = int((levels == "Modéré").sum())
+        high = int((levels == "Élevé").sum())
+    else:
+        low = moderate = high = 0
+    other = moderate + high
+    document = _document(history, research, quality_report, pipeline_status, low, other, high)
+    components.html(document, height=485, scrolling=True)
