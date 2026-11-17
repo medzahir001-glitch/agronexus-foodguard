@@ -1,6 +1,7 @@
 import html
 import json
 import math
+import textwrap
 import pandas as pd
 import streamlit as st
 
@@ -284,7 +285,8 @@ def _category_chart_html(research):
 
 def _install_dashboard_style():
     st.markdown(
-        """
+        textwrap.dedent(
+            """
         <style>
         :root {
           --fnx-deep:#064B32;
@@ -410,7 +412,8 @@ def _install_dashboard_style():
           .fnx-table th, .fnx-table td { padding:7px; font-size:9px; }
         }
         </style>
-        """,
+            """
+        ),
         unsafe_allow_html=True,
     )
 
@@ -463,7 +466,12 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
         '<div class="fnx-disclaimer">FOODNEXA is an experimental food-safety risk-intelligence prototype. Its indicators do not replace laboratory analyses, scientific expertise or applicable regulatory requirements.</div>',
         '</div>',
     ]
-    st.markdown("\n".join(html_parts), unsafe_allow_html=True)
+    # IMPORTANT: Streamlit's Markdown parser treats indented HTML lines as code blocks.
+    # The card/table/chart helpers return multi-line HTML with indentation, so normalize
+    # the final HTML before rendering to ensure tags are interpreted as HTML, not text.
+    dashboard_html = "\n".join(html_parts)
+    dashboard_html = "\n".join(line.lstrip() for line in dashboard_html.splitlines())
+    st.markdown(dashboard_html, unsafe_allow_html=True)
 
     with st.expander("Data Quality & System Status", expanded=False):
         quality_score = f"{score:.1f}%" if score is not None else "N/D"
