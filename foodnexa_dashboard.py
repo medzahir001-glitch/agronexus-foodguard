@@ -337,8 +337,8 @@ tbody tr:nth-child(even) td{{background:#FBFDFC;}}
 .system-status.operational{{background:#DDF6E5;color:#087443;border:1px solid #BFE7CC;}}
 .system-status.attention{{background:#FFF1D6;color:#965B00;border:1px solid #F3D99E;}}
 .system-dot{{width:8px;height:8px;border-radius:50%;background:#21A45A;}}
-.system-details{{margin-top:0;background:#fff;border:1px solid var(--border);border-radius:11px;padding:7px 10px;box-shadow:0 3px 10px #16483008;}}
-.system-details summary{{font-size:10.5px;font-weight:850;color:var(--deep);cursor:pointer;line-height:1.3;padding:2px 0;}}
+.system-details{{margin-top:0;background:#fff;border:1px solid var(--border);border-radius:11px;padding:9px 11px;box-shadow:0 3px 10px #16483008;display:block;min-height:86px;}}
+.system-summary{{font-size:10.5px;font-weight:850;color:var(--deep);line-height:1.3;padding:1px 0 5px;border-bottom:1px solid #E5EEE9;}}
 .detail-body{{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:12px;padding:8px 2px 3px;font-size:9px;line-height:1.4;color:#52665B;}}
 .detail-body ul{{margin:4px 0 0;padding-left:16px;}}
 .status{{display:inline-flex;align-items:center;margin:3px 4px 0 0;padding:3px 7px;border-radius:12px;font-size:8px;line-height:1.25;background:#EEF2EF;color:#5D6B63;}}
@@ -379,7 +379,7 @@ tbody tr:nth-child(even) td{{background:#FBFDFC;}}
     <div class="footer-tags"><span class="footer-tag">⚗ Innovation</span><span class="footer-tag">⬡ Sécurité Alimentaire</span><span class="footer-tag">🍃 Recherche Scientifique</span></div>
     <span class="system-status {system_class}"><i class="system-dot"></i>{system_label}</span>
   </footer>
-  <details class="system-details" open><summary>Data Quality &amp; System Status</summary><div class="detail-body"><div><b>Quality review</b><ul>{issue_html}</ul><div style="margin-top:5px">Exact duplicate rows: {_duplicates(research)}</div></div><div><b>System pipeline</b><div>{pipeline_html}</div></div></div></details>
+  <section class="system-details"><div class="system-summary">Data Quality &amp; System Status</div><div class="detail-body"><div><b>Quality review</b><ul>{issue_html}</ul><div style="margin-top:5px">Exact duplicate rows: {_duplicates(research)}</div></div><div><b>System pipeline</b><div>{pipeline_html}</div></div></div></section>
 </div>
 </body>
 </html>'''
@@ -398,4 +398,4 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
         low = moderate = high = 0
     other = moderate + high
     document = _document(history, research, quality_report, pipeline_status, low, other, high)
-    components.html(document, height=790, scrolling=False)
+    components.html(document, height=940, scrolling=False)
