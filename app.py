@@ -9,6 +9,7 @@ from foodguard_engine import assess_dairy_food_safety_risk
 from foodnexa_data_quality import generate_quality_report
 from foodnexa_cleaning_engine import clean_research_dataset
 from foodnexa_dashboard import render_dashboard
+from foodnexa_product_library import render_product_library
 from foodnexa_supabase import (
     save_risk_assessment,
     save_research_observation,
@@ -1178,6 +1179,7 @@ with st.sidebar:
             "📊 Dashboard",
             "🔬 Nouvelle analyse",
             "🧪 Research Data",
+            "📚 Product Intelligence Library",
             "📊 Research Analytics",
             "🧹 Scientific Data Cleaning",
             "📁 Historique",
@@ -2158,6 +2160,11 @@ elif page == "🧪 Research Data":
 # =====================================================
 # RESEARCH ANALYTICS
 # =====================================================
+
+elif page == "📚 Product Intelligence Library":
+
+    render_product_library()
+
 
 elif page == "📊 Research Analytics":
 
