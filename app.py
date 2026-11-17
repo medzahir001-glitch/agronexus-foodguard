@@ -10,6 +10,7 @@ from foodnexa_data_quality import generate_quality_report
 from foodnexa_cleaning_engine import clean_research_dataset
 from foodnexa_dashboard import render_dashboard
 from foodnexa_product_library import render_product_library
+from foodnexa_traceability import render_traceability
 from foodnexa_supabase import (
     save_risk_assessment,
     save_research_observation,
@@ -1180,6 +1181,7 @@ with st.sidebar:
             "🔬 Nouvelle analyse",
             "🧪 Research Data",
             "📚 Product Intelligence Library",
+            "🔗 Batch Traceability",
             "📊 Research Analytics",
             "🧹 Scientific Data Cleaning",
             "📁 Historique",
@@ -2164,6 +2166,11 @@ elif page == "🧪 Research Data":
 elif page == "📚 Product Intelligence Library":
 
     render_product_library()
+
+
+elif page == "🔗 Batch Traceability":
+
+    render_traceability()
 
 
 elif page == "📊 Research Analytics":
