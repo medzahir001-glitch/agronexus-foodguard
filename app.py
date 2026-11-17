@@ -891,6 +891,35 @@ section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p, section[
 """, unsafe_allow_html=True)
 
 
+
+
+# V18 — slightly tighter spacing and moderately smaller typography (not ultra-compact)
+st.markdown("""
+<style>
+.block-container, [data-testid="stMainBlockContainer"] {padding:.30rem .72rem .55rem !important;}
+.fnx-hero {margin-bottom:8px !important;}
+.fnx-hero img {max-height:108px !important;}
+section[data-testid="stSidebar"] {width:232px !important;min-width:232px !important;max-width:232px !important;}
+section[data-testid="stSidebar"] > div {width:232px !important;min-width:232px !important;}
+.fnx-sidebar-logo {width:180px !important;}
+.fnx-sidebar-brand {padding-bottom:10px !important;margin-bottom:9px !important;}
+section[data-testid="stSidebar"] [data-testid="stRadio"] > label {font-size:11px !important;margin-bottom:4px !important;}
+section[data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {gap:3px !important;}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label {padding:6px 8px !important;font-size:11.5px !important;min-height:31px !important;line-height:1.22 !important;}
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {font-size:10px !important;line-height:1.32 !important;}
+.fnx-sidebar-context {margin-top:14px !important;padding:10px 10px 9px !important;font-size:10.5px !important;}
+.fnx-sidebar-context strong {font-size:10.5px !important;}
+.fnx-sidebar-context small {font-size:9.5px !important;margin-top:7px !important;padding-top:6px !important;}
+[data-testid="stAppViewContainer"] .main p, [data-testid="stAppViewContainer"] .main li {font-size:11px !important;line-height:1.32 !important;}
+@media(max-width:760px) {
+  section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div {width:224px !important;min-width:224px !important;}
+  .block-container, [data-testid="stMainBlockContainer"] {padding:.25rem .45rem .45rem !important;}
+  .fnx-hero img {max-height:88px !important;}
+}
+</style>
+""", unsafe_allow_html=True)
+
 # =====================================================
 # CSV AND DATA HELPERS
 # =====================================================
