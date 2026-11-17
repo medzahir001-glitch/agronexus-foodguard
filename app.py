@@ -66,7 +66,7 @@ html, body, [data-testid="stApp"],
 
 .block-container {
     max-width: 1280px !important;
-    padding-top: 0.65rem !important;
+    padding-top: 1.45rem !important;
     padding-left: 1.5rem !important;
     padding-right: 1.5rem !important;
     padding-bottom: 1.6rem !important;
@@ -131,7 +131,10 @@ h3 {
 
 /* BRAND HEADER */
 .foodnexa-brand-title {
-    text-align: center;
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin-top: 0.35rem !important;
     color: var(--fnx-blue) !important;
     font-size: 1.15rem;
     line-height: 1.05;
@@ -471,6 +474,217 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
 div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * { font-size: 7px !important; }
 .footer-text { font-size: 7px !important; line-height: 1.25 !important; }
 
+
+/* FOODNEXA V8 — compact charts across all application pages */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stPyplotChart"],
+[data-testid="stDeckGlJsonChart"] {
+    width: 110px !important;
+    max-width: 110px !important;
+    height: 78px !important;
+    max-height: 78px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+}
+[data-testid="stVegaLiteChart"] .vega-embed,
+[data-testid="stArrowVegaLiteChart"] .vega-embed,
+[data-testid="stVegaLiteChart"] svg,
+[data-testid="stArrowVegaLiteChart"] svg,
+[data-testid="stVegaLiteChart"] canvas,
+[data-testid="stArrowVegaLiteChart"] canvas {
+    width: 105px !important;
+    max-width: 105px !important;
+    height: 72px !important;
+    max-height: 72px !important;
+}
+[data-testid="stPyplotChart"] img,
+[data-testid="stPyplotChart"] canvas {
+    width: 105px !important;
+    max-width: 105px !important;
+    height: auto !important;
+    max-height: 78px !important;
+    object-fit: contain !important;
+}
+
+/* FOODNEXA V9 — keep page titles visible and centered */
+.block-container,
+[data-testid="stMainBlockContainer"] {
+    padding-top: 1.45rem !important;
+    overflow: visible !important;
+}
+[data-testid="stMain"] h1,
+[data-testid="stMainBlockContainer"] h1,
+[data-testid="stAppViewContainer"] .main h1 {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin-top: 0.55rem !important;
+    margin-bottom: 0.65rem !important;
+    padding-top: 0.15rem !important;
+    position: relative !important;
+    top: auto !important;
+}
+.foodnexa-brand-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 76px !important;
+    height: auto !important;
+    padding: 10px 0 8px !important;
+    margin: 0 0 12px !important;
+    overflow: visible !important;
+    position: relative !important;
+    text-align: center !important;
+}
+.foodnexa-brand-header .foodnexa-brand-title {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 18px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    text-align: center !important;
+    color: #2E7D32 !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    line-height: 1.45 !important;
+    letter-spacing: 1.5px !important;
+}
+.foodnexa-brand-header .foodnexa-brand-subtitle {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 3px 0 9px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    text-align: center !important;
+    color: #174B2A !important;
+    font-size: 8px !important;
+    line-height: 1.4 !important;
+    letter-spacing: 1.4px !important;
+}
+.foodnexa-brand-header .foodnexa-line {
+    display: block !important;
+    width: 100% !important;
+    height: 2px !important;
+    min-height: 2px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 2px !important;
+}
+
+/* FOODNEXA V11 — readable enterprise layout matching the approved dashboard mockup */
+html { font-size:14px !important; }
+.block-container, [data-testid="stMainBlockContainer"] {
+    max-width:none !important; width:100% !important;
+    padding:1.0rem 1.15rem 1.5rem !important;
+}
+[data-testid="stAppViewContainer"] .main p,
+[data-testid="stAppViewContainer"] .main li,
+[data-testid="stAppViewContainer"] .main span,
+[data-testid="stAppViewContainer"] .main label,
+[data-testid="stAppViewContainer"] .main small,
+[data-testid="stAppViewContainer"] .main [data-testid="stMarkdownContainer"],
+[data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] {
+    font-size:11px !important; line-height:1.4 !important;
+}
+[data-testid="stAppViewContainer"] .main h1 {font-size:20px !important; line-height:1.2 !important;}
+[data-testid="stAppViewContainer"] .main h2 {font-size:16px !important; line-height:1.25 !important;}
+[data-testid="stAppViewContainer"] .main h3 {font-size:13px !important; line-height:1.25 !important;}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * {font-size:11px !important; line-height:1.35 !important;}
+.stTextInput label, .stNumberInput label, .stSelectbox label,
+.stDateInput label, .stTextArea label, .stCheckbox label,
+.stRadio label, .stMultiSelect label, .stSlider label,
+[data-testid="stWidgetLabel"] {font-size:10px !important; line-height:1.3 !important;}
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea, [data-baseweb="select"],
+[data-baseweb="select"] *, [data-baseweb="input"] input {font-size:11px !important;}
+.stButton button, .stFormSubmitButton button, .stDownloadButton button {
+    font-size:10px !important; min-height:30px !important; padding:5px 10px !important;
+}
+div[data-testid="stDataFrame"] *, div[data-testid="stTable"] * {font-size:10px !important;}
+[data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
+[data-testid="stPyplotChart"], [data-testid="stDeckGlJsonChart"] {
+    width:100% !important; max-width:100% !important; height:auto !important;
+    max-height:none !important; overflow:visible !important;
+}
+[data-testid="stVegaLiteChart"] svg, [data-testid="stArrowVegaLiteChart"] svg,
+[data-testid="stVegaLiteChart"] canvas, [data-testid="stArrowVegaLiteChart"] canvas,
+[data-testid="stPyplotChart"] img, [data-testid="stPyplotChart"] canvas {
+    max-width:100% !important; max-height:none !important; height:auto !important;
+}
+.foodnexa-brand-header {
+    display:grid !important; grid-template-columns:1fr 2.4fr 1fr !important;
+    grid-template-rows:auto 3px !important; align-items:center !important;
+    width:100% !important; min-height:82px !important; height:auto !important;
+    box-sizing:border-box !important; padding:10px 18px 8px !important;
+    margin:0 0 14px !important; border:1px solid #DCE9E2 !important;
+    border-radius:14px !important; overflow:visible !important;
+    background:linear-gradient(105deg,#EAF7EF 0%,#FFFFFF 48%,#F2F9F5 100%) !important;
+    box-shadow:0 3px 12px rgba(16,83,52,.045) !important;
+    position:relative !important; text-align:center !important;
+}
+.foodnexa-brand-header .foodnexa-brand-center {grid-column:2; grid-row:1; text-align:center;}
+.foodnexa-brand-header .foodnexa-brand-lockup {
+    display:flex !important; justify-content:center !important; align-items:center !important; gap:9px !important;
+}
+.foodnexa-brand-header .foodnexa-brand-symbol {
+    display:grid !important; place-items:center !important; width:34px !important; height:34px !important;
+    border-radius:11px !important; background:#E0F3E7 !important; border:1px solid #B9DEC6 !important;
+    color:#0B6840 !important; font-size:21px !important;
+}
+.foodnexa-brand-header .foodnexa-brand-title {
+    display:block !important; width:auto !important; min-height:0 !important; margin:0 !important;
+    padding:0 !important; color:#0B6840 !important; font-size:25px !important;
+    line-height:1.05 !important; letter-spacing:1.5px !important; font-weight:900 !important;
+}
+.foodnexa-brand-header .foodnexa-brand-subtitle {
+    display:block !important; width:auto !important; margin:5px 0 0 !important; padding:0 !important;
+    color:#245B43 !important; font-size:11px !important; line-height:1.25 !important;
+    letter-spacing:.7px !important; font-weight:800 !important;
+}
+.foodnexa-brand-header .foodnexa-brand-note {
+    grid-column:3; grid-row:1; color:#286044 !important; text-align:right !important;
+    font-size:10px !important; line-height:1.35 !important; font-weight:750 !important;
+}
+.foodnexa-brand-header .foodnexa-line {
+    display:block !important; grid-column:1/-1 !important; grid-row:2 !important;
+    width:100% !important; height:3px !important; min-height:3px !important;
+    margin:8px 0 0 !important; border-radius:10px !important;
+    background:linear-gradient(90deg,#0B6840,#51A876,#0B6840) !important;
+}
+.foodnexa-brand-header .foodnexa-brand-decor {
+    grid-column:1; grid-row:1; text-align:left; color:#5BA879; font-size:28px; opacity:.7;
+}
+.fnx-sidebar-brand {
+    display:flex; align-items:center; gap:10px; padding:8px 2px 12px;
+    border-bottom:1px solid #E1ECE5; margin-bottom:10px;
+}
+.fnx-sidebar-mark {
+    width:38px; height:38px; display:grid; place-items:center; flex:0 0 38px;
+    border-radius:12px; color:#FFFFFF !important; background:linear-gradient(145deg,#1A9658,#075C3A);
+    font-size:20px !important; box-shadow:0 3px 9px rgba(6,75,50,.13);
+}
+.fnx-sidebar-name {font-size:17px !important; color:#0B6840 !important; font-weight:900 !important; letter-spacing:.5px;}
+.fnx-sidebar-tag {font-size:8px !important; color:#718279 !important; line-height:1.3 !important; letter-spacing:.25px;}
+@media (max-width:760px) {
+  .foodnexa-brand-header {grid-template-columns:1fr !important; grid-template-rows:auto auto 3px !important; padding:10px !important;}
+  .foodnexa-brand-header .foodnexa-brand-decor, .foodnexa-brand-header .foodnexa-brand-note {display:none !important;}
+  .foodnexa-brand-header .foodnexa-brand-center {grid-column:1 !important;}
+  .foodnexa-brand-header .foodnexa-line {grid-row:3 !important;}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -710,20 +924,21 @@ research_data = load_csv(RESEARCH_CSV_FILE, RESEARCH_COLUMNS)
 # =====================================================
 
 st.markdown(
-    '<div class="foodnexa-brand-title">FOODNEXA</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="foodnexa-brand-subtitle">'
-    'FOOD SAFETY • RISK INTELLIGENCE'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="foodnexa-line"></div>',
-    unsafe_allow_html=True
+    """
+    <div class="foodnexa-brand-header">
+        <div class="foodnexa-brand-decor">🍃</div>
+        <div class="foodnexa-brand-center">
+            <div class="foodnexa-brand-lockup">
+                <span class="foodnexa-brand-symbol">🛡</span>
+                <div class="foodnexa-brand-title">FOODNEXA</div>
+            </div>
+            <div class="foodnexa-brand-subtitle">Food Safety / Risk Intelligence</div>
+        </div>
+        <div class="foodnexa-brand-note">Innovating today<br>for safer food</div>
+        <div class="foodnexa-line"></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -732,9 +947,18 @@ st.markdown(
 # =====================================================
 
 with st.sidebar:
-    st.markdown("### FOODNEXA")
-    st.caption("FOOD SAFETY / RISK INTELLIGENCE")
-    st.divider()
+    st.markdown(
+        """
+        <div class="fnx-sidebar-brand">
+            <div class="fnx-sidebar-mark">🛡</div>
+            <div>
+                <div class="fnx-sidebar-name">FOODNEXA</div>
+                <div class="fnx-sidebar-tag">FOOD SAFETY / RISK INTELLIGENCE</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     page = st.radio(
         "Navigation",
