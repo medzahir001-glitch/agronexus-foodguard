@@ -59,6 +59,8 @@ def _risk_label(value):
         return "Modéré"
     if raw in {"élevé", "eleve", "high", "high risk", "risque élevé"}:
         return "Élevé"
+    if "incomplet" in raw or "insuffisant" in raw or "non évalué" in raw:
+        return "Données incomplètes"
     return str(value).strip()
 
 
@@ -217,14 +219,16 @@ def render_dashboard(
     low = int(risk_counts.get("Faible", 0)) if hasattr(risk_counts, "get") else 0
     moderate = int(risk_counts.get("Modéré", 0)) if hasattr(risk_counts, "get") else 0
     high = int(risk_counts.get("Élevé", 0)) if hasattr(risk_counts, "get") else 0
+    incomplete = int(risk_counts.get("Données incomplètes", 0)) if hasattr(risk_counts, "get") else 0
     score = _quality_score(quality_report)
     duplicates = _duplicates(research)
 
-    k1, k2, k3, k4 = st.columns(4)
+    k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Total analyses", f"{total_analyses:,}")
     k2.metric("Research observations", f"{total_research:,}")
     k3.metric("Risques élevés", f"{high:,}")
-    k4.metric("Data quality", f"{score:.1f}%" if score is not None else "N/D")
+    k4.metric("Données incomplètes", f"{incomplete:,}")
+    k5.metric("Data quality", f"{score:.1f}%" if score is not None else "N/D")
 
     st.divider()
 
@@ -244,7 +248,7 @@ def render_dashboard(
         ["Tous"] + product_options,
         key="foodnexa_dashboard_product_filter",
     )
-    risk_options = ["Tous", "Faible", "Modéré", "Élevé", "Non renseigné"]
+    risk_options = ["Tous", "Faible", "Modéré", "Élevé", "Données incomplètes", "Non renseigné"]
     selected_risk = f2.selectbox(
         "Niveau de risque",
         risk_options,
