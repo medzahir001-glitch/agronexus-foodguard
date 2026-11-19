@@ -114,9 +114,9 @@ def render_lab_results():
             unit = p2.text_input("Unité", placeholder="UFC/g, mg/kg, pH…")
             numeric_value = None; qualitative = ""
             if result_type == "Quantitatif":
-                numeric_value = st.number_input("Valeur mesurée", value=0.0, format="%.8g", help="Si aucun résultat n'a été mesuré, choisissez « Non testé » au lieu de saisir zéro.")
+                numeric_value = st.number_input("Valeur mesurée", value=None, format="%.8g", placeholder="Saisir une valeur réellement mesurée", help="Le champ reste vide tant qu’aucune mesure n’est saisie. Zéro doit être saisi explicitement s’il s’agit du résultat mesuré.")
             elif result_type == "Qualitatif": qualitative = st.text_input("Résultat qualitatif", placeholder="Ex. Couleur jaune pâle")
-            elif result_type == "Présence / Absence": qualitative = st.selectbox("Résultat", ["Présence", "Absence", "Indéterminé"])
+            elif result_type == "Présence / Absence": qualitative = st.selectbox("Résultat", ["Sélectionner…", "Présence", "Absence", "Indéterminé"], index=0)
             else: st.caption("Aucune valeur ne sera enregistrée pour un test non réalisé.")
             p1,p2 = st.columns(2)
             lab = p1.text_input("Laboratoire")
@@ -137,13 +137,25 @@ def render_lab_results():
             comments = st.text_area("Commentaires / observations", height=80)
             submitted = st.form_submit_button("Enregistrer le résultat", type="primary", use_container_width=True)
         if submitted:
-            if not test_name.strip(): st.error("Le nom du paramètre / de l'analyse est obligatoire.")
-            elif result_type == "Qualitatif" and not qualitative.strip(): st.error("Saisissez le résultat qualitatif, ou choisissez Non testé.")
+            if not test_name.strip():
+                st.error("Le nom du paramètre / de l'analyse est obligatoire.")
+            elif not batch_id and not product_manual.strip():
+                st.error("Sélectionnez un lot ou renseignez le nom du produit.")
+            elif result_type == "Quantitatif" and numeric_value is None:
+                st.error("Aucune valeur quantitative saisie. Laissez le type sur « Non testé » si l'analyse n'a pas été réalisée.")
+            elif result_type == "Quantitatif" and not unit.strip():
+                st.error("L'unité est obligatoire pour un résultat quantitatif. Pour le pH, indiquez par exemple « sans unité ».")
+            elif result_type == "Qualitatif" and not qualitative.strip():
+                st.error("Saisissez le résultat qualitatif, ou choisissez Non testé.")
+            elif result_type == "Présence / Absence" and qualitative == "Sélectionner…":
+                st.error("Choisissez Présence, Absence ou Indéterminé; sinon sélectionnez Non testé.")
             else:
                 from datetime import date
                 try:
-                    for d in (sampling_date, analysis_date):
-                        if d.strip(): date.fromisoformat(d.strip())
+                    parsed_sampling = date.fromisoformat(sampling_date.strip()) if sampling_date.strip() else None
+                    parsed_analysis = date.fromisoformat(analysis_date.strip()) if analysis_date.strip() else None
+                    if parsed_sampling and parsed_analysis and parsed_analysis < parsed_sampling:
+                        raise ValueError("La date d'analyse ne peut pas précéder la date de prélèvement.")
                     item = {
                         "id": str(uuid.uuid4()), "batch_id": batch_id or None,
                         "batch_code": batch.get("batch_code", "") if batch else "",
@@ -165,7 +177,8 @@ def render_lab_results():
                         if err: st.warning(err)
                         st.rerun()
                     else: st.error(err or "Échec de l'enregistrement.")
-                except ValueError: st.error("Les dates doivent respecter le format AAAA-MM-JJ.")
+                except ValueError as exc:
+                    st.error(str(exc) or "Les dates doivent respecter le format AAAA-MM-JJ.")
     with tab_view:
         st.subheader("Registre des résultats")
         if rows:
