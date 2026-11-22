@@ -1519,6 +1519,7 @@ elif page == "🔬 Nouvelle analyse":
 
     st.title("🔬 Nouvelle analyse FOODNEXA")
     st.write("Évaluation expérimentale du risque pour un lot de lait pasteurisé.")
+    st.caption("FOODNEXA Risk Engine V2 — règles expérimentales explicables, en cours de validation.")
     st.warning(
         "Renseignez uniquement les mesures et contrôles réellement disponibles. "
         "Une information inconnue doit rester « Non renseignée »; elle ne sera pas considérée comme sûre."
@@ -1576,7 +1577,7 @@ elif page == "🔬 Nouvelle analyse":
 
         completeness = float(report.get("data_completeness", 0.0))
         score_value = report.get("risk_score")
-        score_label = f"{score_value}/100" if score_value is not None else "N/D"
+        score_label = f"{float(score_value):.1f}/100" if score_value is not None else "N/D"
         st.success("Analyse FOODNEXA exécutée.")
         r1, r2, r3 = st.columns(3)
         r1.metric("RISK SCORE", score_label)
@@ -1593,7 +1594,8 @@ elif page == "🔬 Nouvelle analyse":
         else:
             st.warning(
                 f"Analyse incomplète : {report.get('available_factors', 0)}/6 facteurs renseignés. "
-                "Aucun score global ni niveau Faible/Modéré/Élevé n'est attribué avant de compléter les données."
+                "Aucun score global Faible/Modéré/Élevé n'est calculé tant que les six facteurs ne sont pas disponibles. "
+                "Les signaux partiels restent affichés séparément."
             )
 
         factor_names = {
@@ -1622,7 +1624,15 @@ elif page == "🔬 Nouvelle analyse":
             for reason in report["reasons"]:
                 st.warning(reason)
         else:
-            st.info("Aucun signal n'a été détecté parmi les facteurs renseignés.")
+            st.info(report.get(
+                "signal_summary",
+                "Aucun signal n'a été détecté par les règles actuelles du prototype."
+            ))
+
+        st.caption(
+            f"Moteur : FOODNEXA Risk Engine {report.get('engine_version', 'version non précisée')} | "
+            "Score expérimental fondé sur des règles, non validé comme probabilité de danger."
+        )
 
         st.subheader("💡 Recommandations")
         for recommendation in report["recommendations"]:
@@ -1645,7 +1655,11 @@ elif page == "🔬 Nouvelle analyse":
             "hygiene_score": report["factors"]["hygiene"]["score"],
             "pasteurization_score": report["factors"]["pasteurization"]["score"],
             "risk_score": report["risk_score"],
-            "risk_level": report["risk_level"] if report["analysis_complete"] else "Données incomplètes",
+            "raw_score": report.get("raw_score"),
+            "maximum_raw_score": report.get("maximum_raw_score"),
+            "engine_version": report.get("engine_version"),
+            "scoring_method": report.get("scoring_method"),
+            "risk_level": report["risk_level"],
             "confidence": None,
             "data_completeness": completeness,
             "analysis_status": "Complete" if report["analysis_complete"] else "Données incomplètes",
@@ -1665,7 +1679,8 @@ elif page == "🔬 Nouvelle analyse":
                 product_name=product_name.strip(),
                 risk_score=float(report["risk_score"]) if report["risk_score"] is not None else None,
                 risk_level=report["risk_level"] if report["analysis_complete"] else None,
-                confidence=completeness,
+                # Completeness is not statistical confidence. Keep confidence NULL.
+                confidence=None,
                 data_completeness=completeness,
                 analysis_status="Complete" if report["analysis_complete"] else "Données incomplètes",
                 inputs={
@@ -1675,6 +1690,10 @@ elif page == "🔬 Nouvelle analyse":
                     "cold_chain_broken": cold_chain_broken,
                     "hygiene_controlled": hygiene_controlled,
                     "pasteurized": pasteurized,
+                    "engine_version": report.get("engine_version"),
+                    "scoring_method": report.get("scoring_method"),
+                    "raw_score": report.get("raw_score"),
+                    "maximum_raw_score": report.get("maximum_raw_score"),
                 },
                 factor_scores={name: factor["score"] for name, factor in report["factors"].items()},
                 reasons=report["reasons"],
@@ -3366,40 +3385,56 @@ section[data-testid="stSidebar"] {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# FOODNEXA V28 — RECLAIM MAIN AREA WHEN SIDEBAR IS COLLAPSED
-# Streamlit 1.67 uses data-collapsed="true|false" on stSidebar.
-# The app's older CSS still pins the sidebar width, so a negative
-# outer margin is needed to release that reserved flex-layout space.
+# FOODNEXA V27 — REMOVE EMPTY SPACE WHEN SIDEBAR IS CLOSED
+# The previous CSS forced a fixed sidebar width even when Streamlit
+# collapsed it. This override releases that width so the dashboard
+# expands into the available viewport.
 # =====================================================
 st.markdown("""
 <style>
-/* Keep the existing designed width when navigation is expanded. */
-section[data-testid="stSidebar"][data-collapsed="false"] {
+/* Expanded sidebar: keep the intended navigation width. */
+section[data-testid="stSidebar"][aria-expanded="true"] {
     width: 238px !important;
     min-width: 238px !important;
     max-width: 238px !important;
     flex: 0 0 238px !important;
+    transform: translateX(0) !important;
+    overflow: visible !important;
+}
+section[data-testid="stSidebar"][aria-expanded="true"] > div {
+    width: 238px !important;
+    min-width: 238px !important;
+}
+
+/* Collapsed sidebar: remove its reserved width, not just its contents. */
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
     margin-left: 0 !important;
-}
-
-/* When collapsed, move the sidebar's reserved slot out of the layout.
-   Do not set width:0: Streamlit still owns the collapse animation/control. */
-section[data-testid="stSidebar"][data-collapsed="true"] {
-    width: 238px !important;
-    min-width: 238px !important;
-    max-width: 238px !important;
-    flex: 0 0 238px !important;
-    margin-left: -238px !important;
+    margin-right: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
     overflow: hidden !important;
-    pointer-events: none !important;
+    transform: translateX(-100%) !important;
+}
+section[data-testid="stSidebar"][aria-expanded="false"] > div,
+section[data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarContent"],
+section[data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
 }
 
-/* Main area must be allowed to grow into the released 238px. */
+/* Let the main dashboard use all the space released by the sidebar. */
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] [data-testid="stMain"] {
     min-width: 0 !important;
+    width: 100% !important;
     flex: 1 1 auto !important;
-    width: auto !important;
 }
 [data-testid="stMainBlockContainer"],
 .block-container {
@@ -3407,11 +3442,12 @@ section[data-testid="stSidebar"][data-collapsed="true"] {
     max-width: none !important;
 }
 
-/* The native expand control remains clickable while the sidebar is closed. */
+/* Keep the native expand control accessible while the sidebar is closed. */
+section[data-testid="stSidebar"][aria-expanded="false"] ~ [data-testid="stSidebarCollapsedControl"],
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"] {
-    display: flex !important;
     visibility: visible !important;
+    display: flex !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     z-index: 2147483001 !important;
