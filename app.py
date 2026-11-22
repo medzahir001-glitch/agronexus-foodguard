@@ -1080,7 +1080,86 @@ def load_research_analytics_data():
             )
 
             if not remote_data.empty:
-                return remote_data, "Supabase", None
+                # Merge local-only observations that failed to reach Supabase.
+                # V24 observation_id is the primary identity; legacy rows
+                # without an ID are reconciled by sample/measurement signature.
+                if not local_data.empty:
+                    remote_ids = set()
+                    if "observation_id" in remote_data.columns:
+                        remote_ids = {
+                            str(value).strip()
+                            for value in remote_data["observation_id"].tolist()
+                            if not _is_missing_or_blank(value)
+                        }
+
+                    signature_fields = [
+                        "batch_id", "product_name", "sample_reference",
+                        "sampling_date", "analysis_date", "temperature_celsius",
+                        "storage_days", "ph", "total_viable_count",
+                        "enterobacteriaceae_count", "coliform_count",
+                        "staphylococcus_aureus_count", "salmonella_detected",
+                        "nonconformity_detected", "expert_risk_label",
+                    ]
+
+                    def _observation_signature(record):
+                        values = []
+                        for field in signature_fields:
+                            value = record.get(field) if hasattr(record, "get") else None
+                            if _is_missing_or_blank(value):
+                                values.append(None)
+                            elif field in {
+                                "temperature_celsius", "storage_days", "ph",
+                                "total_viable_count", "enterobacteriaceae_count",
+                                "coliform_count", "staphylococcus_aureus_count",
+                            }:
+                                try:
+                                    values.append(round(float(value), 8))
+                                except (TypeError, ValueError, OverflowError):
+                                    values.append(str(value).strip())
+                            elif field in {"salmonella_detected", "nonconformity_detected"}:
+                                lowered = str(value).strip().casefold()
+                                if lowered in {"true", "1", "oui", "yes", "détectée", "detectee"}:
+                                    values.append(True)
+                                elif lowered in {"false", "0", "non", "no", "non détectée", "non detectee"}:
+                                    values.append(False)
+                                elif lowered in {"non renseigné", "non renseigne", "non renseignée", "non renseignee", "non évalué", "non evalue", "non analysé", "non analyse", "non testé", "non teste", "indéterminé", "indetermine"}:
+                                    values.append(None)
+                                else:
+                                    values.append(lowered)
+                            else:
+                                values.append(str(value).strip().casefold())
+                        return tuple(values)
+
+                    remote_signature_counts = {}
+                    for _, remote_row in remote_data.iterrows():
+                        signature = _observation_signature(remote_row)
+                        remote_signature_counts[signature] = remote_signature_counts.get(signature, 0) + 1
+
+                    local_seen_without_id = {}
+                    local_only_rows = []
+                    for _, local_row in local_data.iterrows():
+                        local_id = local_row.get("observation_id") if "observation_id" in local_data.columns else None
+                        if not _is_missing_or_blank(local_id):
+                            if str(local_id).strip() not in remote_ids:
+                                local_only_rows.append(local_row.copy())
+                            continue
+
+                        signature = _observation_signature(local_row)
+                        occurrence = local_seen_without_id.get(signature, 0) + 1
+                        local_seen_without_id[signature] = occurrence
+                        if occurrence > remote_signature_counts.get(signature, 0):
+                            local_only_rows.append(local_row.copy())
+
+                    if local_only_rows:
+                        local_only_frame = pd.DataFrame(local_only_rows)
+                        local_only_frame["research_source"] = "CSV local — non trouvé dans Supabase"
+                        remote_data = pd.concat(
+                            [remote_data, local_only_frame],
+                            ignore_index=True,
+                            sort=False,
+                        )
+
+                return remote_data, "Supabase + CSV local", None
 
         except Exception as error:
             if not local_data.empty:
@@ -1173,9 +1252,9 @@ def _as_text_list(value):
 def load_risk_history():
     """Prefer persisted Supabase risk assessments; keep legacy CSV as fallback.
 
-    Incomplete rule-screening sessions remain in the local CSV only because
-    they do not have a final risk score and should not be inserted into the
-    historical risk-assessment table as if they were complete assessments.
+    Complete and incomplete sessions are retrieved from Supabase. Local CSV
+    records missing remotely are merged in, without double-counting matching
+    sessions already present in both stores.
     """
     local_data = load_csv(CSV_FILE)
     try:
@@ -1245,14 +1324,74 @@ def load_risk_history():
         rows.append(row)
 
     result = pd.DataFrame(rows)
-    # Retain local partial records but don't duplicate complete assessments.
-    if not local_data.empty and "analysis_status" in local_data.columns:
-        partial = local_data[
-            local_data["analysis_status"].astype(str).str.casefold().eq("données incomplètes")
-        ].copy()
-        if not partial.empty:
-            partial["history_source"] = "CSV local — analyse incomplète"
-            result = pd.concat([result, partial], ignore_index=True, sort=False)
+    # Merge local CSV records that were not persisted remotely. This preserves
+    # legacy/local-only history without double-counting records saved to both
+    # stores. A multiset comparison keeps genuinely repeated analyses intact.
+    if not local_data.empty and "batch_id" in local_data.columns:
+        signature_fields = [
+            "batch_id", "temperature_celsius", "storage_days", "ph",
+            "cold_chain_broken", "hygiene_controlled", "pasteurized",
+            "risk_score", "risk_level", "data_completeness", "analysis_status",
+        ]
+
+        def _history_signature(record):
+            signature = []
+            for field in signature_fields:
+                if field == "data_completeness":
+                    value = record.get(field, record.get("confidence"))
+                    if _is_missing_or_blank(value):
+                        value = record.get("confidence")
+                elif field == "analysis_status":
+                    value = record.get(field)
+                    if _is_missing_or_blank(value):
+                        value = (
+                            "Complete"
+                            if not _is_missing_or_blank(record.get("risk_score"))
+                            and not _is_missing_or_blank(record.get("risk_level"))
+                            else "Données incomplètes"
+                        )
+                else:
+                    value = record.get(field) if hasattr(record, "get") else None
+
+                if _is_missing_or_blank(value):
+                    signature.append(None)
+                    continue
+                if field in {"temperature_celsius", "storage_days", "ph", "risk_score", "data_completeness"}:
+                    try:
+                        signature.append(round(float(value), 8))
+                        continue
+                    except (TypeError, ValueError, OverflowError):
+                        pass
+                if field in {"cold_chain_broken", "hygiene_controlled", "pasteurized"}:
+                    if isinstance(value, str):
+                        lowered = value.strip().casefold()
+                        if lowered in {"true", "1", "oui", "yes"}:
+                            value = True
+                        elif lowered in {"false", "0", "non", "no"}:
+                            value = False
+                    signature.append(value)
+                else:
+                    signature.append(str(value).strip())
+            return tuple(signature)
+
+        remote_counts = {}
+        for _, remote_row in result.iterrows():
+            key = _history_signature(remote_row)
+            remote_counts[key] = remote_counts.get(key, 0) + 1
+
+        local_only = []
+        for _, local_row in local_data.iterrows():
+            key = _history_signature(local_row)
+            remaining = remote_counts.get(key, 0)
+            if remaining > 0:
+                remote_counts[key] = remaining - 1
+            else:
+                row = local_row.copy()
+                row["history_source"] = "CSV local — non trouvé dans Supabase"
+                local_only.append(row)
+
+        if local_only:
+            result = pd.concat([result, pd.DataFrame(local_only)], ignore_index=True, sort=False)
 
     if "analysis_date" in result.columns:
         result["_sort_date"] = pd.to_datetime(result["analysis_date"], errors="coerce", utc=True)
@@ -1346,7 +1485,7 @@ if page == "📊 Dashboard":
         "Data Quality Engine": True if dashboard_quality is not None else None,
         "Scientific Data Cleaning": None,
         "Research Analytics": True if not dashboard_research.empty else None,
-        "Supabase": dashboard_source == "Supabase" and history_source == "Supabase",
+        "Supabase": ("Supabase" in dashboard_source) and history_source == "Supabase",
     }
 
     if dashboard_source.startswith("CSV local"):
@@ -1503,7 +1642,7 @@ elif page == "🔬 Nouvelle analyse":
             "hygiene_score": report["factors"]["hygiene"]["score"],
             "pasteurization_score": report["factors"]["pasteurization"]["score"],
             "risk_score": report["risk_score"],
-            "risk_level": report["risk_level"],
+            "risk_level": report["risk_level"] if report["analysis_complete"] else "Données incomplètes",
             "confidence": None,
             "data_completeness": completeness,
             "analysis_status": "Complete" if report["analysis_complete"] else "Données incomplètes",
@@ -1608,12 +1747,18 @@ elif page == "🧪 Research Data":
         traceability_batches, traceability_storage, traceability_error = [], "Non disponible", trace_error
 
     traceability_options = {"": "Aucun lot lié"}
-    for _batch in traceability_batches:
-        _batch_id = str(_batch.get("id", "")).strip()
-        if _batch_id:
-            traceability_options[_batch_id] = (
-                f"{_batch.get('batch_code', 'Lot')} — {_batch.get('product_name', '')}"
-            )
+    if traceability_storage == "Supabase":
+        for _batch in traceability_batches:
+            _batch_id = str(_batch.get("id", "")).strip()
+            if _batch_id:
+                traceability_options[_batch_id] = (
+                    f"{_batch.get('batch_code', 'Lot')} — {_batch.get('product_name', '')}"
+                )
+    elif traceability_batches:
+        st.caption(
+            "Les lots disponibles proviennent du stockage local. Le lien relationnel "
+            "vers Supabase sera activé lorsque les lots seront accessibles depuis Supabase."
+        )
 
     with st.form("foodnexa_research_v2_form", clear_on_submit=False):
 
@@ -3142,6 +3287,77 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label { font-size: 11px
 @media (max-width: 760px) {
   section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { width: 226px !important; min-width: 226px !important; }
   [data-testid="stAppViewContainer"] .main h1 { font-size: 19px !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================================
+# FOODNEXA V25 — RESTORE STREAMLIT SIDEBAR NAVIGATION
+# =====================================================
+# Streamlit's native collapsed-sidebar control uses
+# stSidebarCollapsedControl (legacy: collapsedControl).
+# Keep the control visible even when the browser remembers a collapsed state.
+st.markdown("""
+<style>
+/* Keep Streamlit's header available for the sidebar toggle. */
+[data-testid="stHeader"] {
+    visibility: visible !important;
+    display: flex !important;
+    position: relative !important;
+    overflow: visible !important;
+    min-height: 3rem !important;
+    height: 3rem !important;
+    z-index: 2147483000 !important;
+}
+
+/* The actual expand control shown while the sidebar is collapsed. */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: .55rem !important;
+    left: .65rem !important;
+    z-index: 2147483001 !important;
+    width: 2.55rem !important;
+    min-width: 2.55rem !important;
+    height: 2.55rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #FFFFFF !important;
+    border: 1px solid #CFE2D6 !important;
+    border-radius: 11px !important;
+    box-shadow: 0 2px 9px rgba(7, 83, 54, .15) !important;
+}
+
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button,
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="collapsedControl"] svg {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Keep the in-sidebar collapse button visible after the menu is opened. */
+[data-testid="stSidebarCollapseButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+[data-testid="stSidebarCollapseButton"] button {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Never hide the sidebar content with application CSS. */
+section[data-testid="stSidebar"] {
+    visibility: visible !important;
 }
 </style>
 """, unsafe_allow_html=True)
