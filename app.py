@@ -3385,12 +3385,84 @@ section[data-testid="stSidebar"] {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# FOODNEXA V27 — REMOVE EMPTY SPACE WHEN SIDEBAR IS CLOSED
-# The previous CSS forced a fixed sidebar width even when Streamlit
-# collapsed it. This override releases that width so the dashboard
-# expands into the available viewport.
+
 # =====================================================
+# FOODNEXA V28 — SIDEBAR NAVIGATION FIX
+# Compatible with Streamlit's data-collapsed state
+# =====================================================
+
 st.markdown("""
+<style>
+
+/* Keep sidebar dimensions consistent */
+section[data-testid="stSidebar"] {
+    width: 238px !important;
+    min-width: 238px !important;
+    max-width: 238px !important;
+    flex: 0 0 238px !important;
+    transition: margin-left 0.2s ease !important;
+}
+
+/* Expanded sidebar */
+section[data-testid="stSidebar"][data-collapsed="false"] {
+    margin-left: 0 !important;
+}
+
+/* Collapsed sidebar: release the reserved blank space */
+section[data-testid="stSidebar"][data-collapsed="true"] {
+    margin-left: -238px !important;
+}
+
+/* Preserve sidebar content dimensions */
+section[data-testid="stSidebar"] > div {
+    width: 238px !important;
+    min-width: 238px !important;
+}
+
+/* Keep the native navigation controls visible */
+[data-testid="stHeader"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Main content must use available space */
+[data-testid="stAppViewContainer"] [data-testid="stMain"] {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+[data-testid="stMainBlockContainer"],
+.block-container {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+    section[data-testid="stSidebar"] {
+        width: 226px !important;
+        min-width: 226px !important;
+        max-width: 226px !important;
+        flex-basis: 226px !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        width: 226px !important;
+        min-width: 226px !important;
+    }
+
+    section[data-testid="stSidebar"][data-collapsed="true"] {
+        margin-left: -226px !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 <style>
 /* Expanded sidebar: keep the intended navigation width. */
 section[data-testid="stSidebar"][aria-expanded="true"] {
