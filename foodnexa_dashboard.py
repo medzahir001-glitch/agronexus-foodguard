@@ -1,3 +1,4 @@
+
 import html
 import json
 import math
@@ -139,11 +140,16 @@ def _engine_issues(report):
                 ),
             })
         else:
-            output.append({"Ligne": "—", "Champ": "—", "Anomalie": str(item), "Niveau": "À vérifier"})
+            output.append({
+                "Ligne": "—",
+                "Champ": "—",
+                "Anomalie": str(item),
+                "Niveau": "À vérifier"
+            })
     return output
 
 
-def _card(label, value, detail="", accent="blue", icon=""):
+def _card(label, value, detail="", accent="green", icon=""):
     palette = {
         "blue": "#0B6F91",
         "green": "#15966F",
@@ -151,7 +157,7 @@ def _card(label, value, detail="", accent="blue", icon=""):
         "amber": "#D99121",
         "navy": "#173B5E",
     }
-    color = palette.get(accent, palette["blue"])
+    color = palette.get(accent, palette["green"])
     st.markdown(
         f"""
         <div class="fnx-kpi" style="border-top:4px solid {color}">
@@ -169,124 +175,232 @@ def _install_dashboard_style():
         """
         <style>
         :root {
-          --fnx-navy:#124B27; --fnx-blue:#1D6536; --fnx-teal:#258A4A;
-          --fnx-green:#2F8F46; --fnx-ink:#17251B; --fnx-muted:#66756A;
-          --fnx-border:#DDE8DE; --fnx-bg:#F5F7F5;
+          --fnx-navy:#124B27;
+          --fnx-blue:#1D6536;
+          --fnx-teal:#258A4A;
+          --fnx-green:#2F8F46;
+          --fnx-ink:#17251B;
+          --fnx-muted:#66756A;
+          --fnx-border:#DDE8DE;
+          --fnx-bg:#F5F7F5;
         }
-        [data-testid="stAppViewContainer"], [data-testid="stMain"],
-        [data-testid="stMainBlockContainer"], .main, .block-container {
+
+        [data-testid="stAppViewContainer"],
+        [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"],
+        .main,
+        .block-container {
           background:#F5F7F5 !important;
         }
-        /* Use the full available desktop canvas instead of a narrow centered column. */
+
         .block-container {
-          width:100% !important; max-width:none !important;
+          width:100% !important;
+          max-width:none !important;
           padding:1.35rem 2rem 2rem !important;
         }
+
         [data-testid="stMainBlockContainer"] {
-          width:100% !important; max-width:none !important;
+          width:100% !important;
+          max-width:none !important;
         }
+
         [data-testid="stSidebar"] {
-          min-width:250px !important; max-width:250px !important;
-        }
-        [data-testid="stSidebar"] {
+          min-width:250px !important;
+          max-width:250px !important;
           background:#124B27 !important;
           border-right:1px solid #DDE8DE !important;
         }
-        [data-testid="stSidebar"] * {color:#FFFFFF !important;}
-        [data-testid="stSidebar"] [data-testid="stRadio"] label {
-          background:rgba(255,255,255,.07); border-radius:8px;
-          padding:7px 10px; margin:2px 0;
+
+        [data-testid="stSidebar"] * {
+          color:#FFFFFF !important;
         }
+
+        [data-testid="stSidebar"] [data-testid="stRadio"] label {
+          background:rgba(255,255,255,.07);
+          border-radius:8px;
+          padding:7px 10px;
+          margin:2px 0;
+        }
+
         [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
           background:rgba(255,255,255,.16);
         }
+
         [data-testid="stAppViewContainer"] .main p,
         [data-testid="stAppViewContainer"] .main li,
         [data-testid="stAppViewContainer"] .main label,
         [data-testid="stAppViewContainer"] .main span {
           color:var(--fnx-ink);
         }
+
         [data-testid="stAppViewContainer"] .main h1 {
-          color:#14532D !important; font-size:2.05rem !important;
-          font-weight:850 !important; letter-spacing:-1.1px !important;
+          color:#14532D !important;
+          font-size:2.05rem !important;
+          font-weight:850 !important;
+          letter-spacing:-1.1px !important;
           margin-bottom:.15rem !important;
         }
+
         [data-testid="stAppViewContainer"] .main h2 {
-          color:#174B2A !important; font-size:1.02rem !important;
+          color:#174B2A !important;
+          font-size:1.02rem !important;
           font-weight:800 !important;
         }
+
         [data-testid="stAppViewContainer"] .main h3 {
-          color:#236B3A !important; font-size:0.88rem !important;
+          color:#236B3A !important;
+          font-size:0.88rem !important;
           font-weight:750 !important;
         }
+
         [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] p {
           color:#526357 !important;
         }
+
         .fnx-kpi {
-          background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:12px; padding:13px 15px; min-height:96px;
-          box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
+          background:#FFFFFF;
+          border:1px solid var(--fnx-border);
+          border-radius:12px;
+          padding:12px 14px;
+          min-height:88px;
+          box-shadow:0 4px 14px rgba(20,65,35,.07);
+          margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.70rem; color:#536357; font-weight:700;}
-        .fnx-kpi-value {font-size:1.42rem; line-height:1.25; color:#14532D; font-weight:850;}
-        .fnx-kpi-detail {font-size:.66rem; color:#718075; margin-top:3px;}
+
+        .fnx-kpi-label {
+          font-size:.70rem;
+          color:#536357;
+          font-weight:700;
+        }
+
+        .fnx-kpi-value {
+          font-size:1.7rem;
+          line-height:1.25;
+          color:#14532D;
+          font-weight:850;
+        }
+
+        .fnx-kpi-detail {
+          font-size:.66rem;
+          color:#718075;
+          margin-top:3px;
+        }
+
         .fnx-section {
-          background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:12px; padding:12px 14px; margin:6px 0 11px;
+          background:#FFFFFF;
+          border:1px solid var(--fnx-border);
+          border-radius:12px;
+          padding:12px 14px;
+          margin:6px 0 11px;
           box-shadow:0 2px 10px rgba(20,65,35,.045);
         }
-        .fnx-section-title {font-size:.94rem; color:#174B2A; font-weight:800; margin-bottom:8px;}
-        div[data-testid="stDataFrame"] {
-          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-radius:10px !important; overflow:hidden !important;
-        }
-        div[data-testid="stDataFrame"] * {color:#203648 !important;}
-        [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
-        [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
-        div[data-testid="stMetric"] {
-          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-left:4px solid #2F8F46 !important; border-radius:12px !important;
-          box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
-        }
-        div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
 
-        .fnx-status-chip {
-          display:inline-block; text-align:center; margin-top:12px;
-          padding:8px 12px; border-radius:20px; background:#E8F3E8;
-          color:#14532D; font-size:.72rem; font-weight:800;
-          border:1px solid #C9E2CC;
-        }
-        [data-testid="stTabs"] [data-baseweb="tab-list"] {
-          gap:8px; border-bottom:1px solid #D6E5D8;
-        }
-        [data-testid="stTabs"] button[role="tab"] {
-          background:#FFFFFF; border:1px solid #D6E5D8;
-          border-radius:9px 9px 0 0; padding:8px 16px;
-          color:#174B2A; font-weight:750;
-        }
-        [data-testid="stTabs"] button[aria-selected="true"] {
-          background:#E8F3E8; color:#14532D;
-          border-bottom:3px solid #238442;
-        }
-        .fnx-kpi {padding:12px 14px; min-height:88px;}
-        .fnx-kpi-value {font-size:1.7rem;}
-                .fnx-dashboard-gap {height:8px;}
         .fnx-section-title {
-          color:#174B2A; font-size:.94rem; font-weight:800;
-          margin:5px 0 7px; padding-bottom:5px;
+          color:#174B2A;
+          font-size:.94rem;
+          font-weight:800;
+          margin:5px 0 7px;
+          padding-bottom:5px;
           border-bottom:1px solid #DDE8DE;
         }
-        [data-testid="stDataFrame"] {font-size:.78rem !important;}
-        .fnx-pill {
-          display:inline-block; padding:4px 9px; border-radius:30px;
-          background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
+
+        div[data-testid="stDataFrame"] {
+          background:#FFFFFF !important;
+          border:1px solid var(--fnx-border) !important;
+          border-radius:10px !important;
+          overflow:hidden !important;
+          box-shadow:0 2px 9px rgba(20,65,35,.045);
+          font-size:.78rem !important;
         }
-        hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
-        div[data-testid="stDataFrame"] {box-shadow:0 2px 9px rgba(20,65,35,.045);}
+
+        div[data-testid="stDataFrame"] * {
+          color:#203648 !important;
+        }
+
+        [data-testid="stVegaLiteChart"],
+        [data-testid="stArrowVegaLiteChart"],
+        [data-testid="stPyplotChart"] {
+          background:#FFFFFF !important;
+        }
+
+        div[data-testid="stMetric"] {
+          background:#FFFFFF !important;
+          border:1px solid var(--fnx-border) !important;
+          border-left:4px solid #2F8F46 !important;
+          border-radius:12px !important;
+          box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
+        }
+
+        div[data-testid="stMetric"] * {
+          color:var(--fnx-navy) !important;
+        }
+
+        .fnx-status-chip {
+          display:inline-block;
+          text-align:center;
+          margin-top:12px;
+          padding:8px 12px;
+          border-radius:20px;
+          background:#E8F3E8;
+          color:#14532D;
+          font-size:.72rem;
+          font-weight:800;
+          border:1px solid #C9E2CC;
+        }
+
+        [data-testid="stTabs"] [data-baseweb="tab-list"] {
+          gap:8px;
+          border-bottom:1px solid #D6E5D8;
+        }
+
+        [data-testid="stTabs"] button[role="tab"] {
+          background:#FFFFFF;
+          border:1px solid #D6E5D8;
+          border-radius:9px 9px 0 0;
+          padding:8px 16px;
+          color:#174B2A;
+          font-weight:750;
+        }
+
+        [data-testid="stTabs"] button[aria-selected="true"] {
+          background:#E8F3E8;
+          color:#14532D;
+          border-bottom:3px solid #238442;
+        }
+
+        .fnx-dashboard-gap {
+          height:8px;
+        }
+
+        .fnx-pill {
+          display:inline-block;
+          padding:4px 9px;
+          border-radius:30px;
+          background:#EAF5E9;
+          color:#1B6633;
+          font-size:.72rem;
+          font-weight:750;
+        }
+
+        hr {
+          border-color:#E1E9E1 !important;
+          margin:.75rem 0 !important;
+        }
+
         @media (max-width: 900px) {
-          .block-container {padding-left:1rem !important; padding-right:1rem !important;}
-          [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
-          [data-testid="stAppViewContainer"] .main h1 {font-size:1.9rem !important;}
+          .block-container {
+            padding-left:1rem !important;
+            padding-right:1rem !important;
+          }
+
+          [data-testid="stSidebar"] {
+            min-width:0 !important;
+            max-width:none !important;
+          }
+
+          [data-testid="stAppViewContainer"] .main h1 {
+            font-size:1.9rem !important;
+          }
         }
         </style>
         """,
@@ -296,6 +410,7 @@ def _install_dashboard_style():
 
 def _render_activity(history, research):
     records = []
+
     if not history.empty:
         for _, row in history.tail(12).iterrows():
             records.append({
@@ -305,6 +420,7 @@ def _render_activity(history, research):
                 "Produit": _text(row.get("product_name", "")),
                 "Résultat": f'{_text(row.get("risk_level", ""))} — {_text(row.get("risk_score", ""))}',
             })
+
     if not research.empty:
         for _, row in research.tail(12).iterrows():
             records.append({
@@ -314,52 +430,88 @@ def _render_activity(history, research):
                 "Produit": _text(row.get("product_name", "")),
                 "Résultat": "Observation enregistrée",
             })
+
     if not records:
         st.info("Aucune activité enregistrée pour le moment.")
         return
+
     frame = pd.DataFrame(records)
     frame["_date"] = pd.to_datetime(frame["Date"], errors="coerce", utc=True)
-    frame = frame.sort_values("_date", ascending=False, na_position="last").drop(columns="_date")
+    frame = frame.sort_values(
+        "_date", ascending=False, na_position="last"
+    ).drop(columns="_date")
+
     st.dataframe(frame.head(10), use_container_width=True, hide_index=True)
 
 
-
 def _render_donut(labels, values):
-    """Render the reference-style green/red doughnut chart."""
+    """Render a green/red doughnut chart."""
     try:
         import matplotlib.pyplot as plt
     except ImportError:
-        st.bar_chart(pd.DataFrame({"Value": values}, index=labels), color="#238442")
+        st.bar_chart(
+            pd.DataFrame({"Value": values}, index=labels),
+            color="#238442"
+        )
         return
 
     total = sum(values)
+
     if total <= 0:
-        st.info("Aucune donnée de conformité disponible.")
+        st.info("Aucune donnée de risque disponible.")
         return
 
     fig, ax = plt.subplots(figsize=(4.2, 2.8), dpi=130)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
+
     colors = ["#14532D", "#B91C1C", "#D9E8D9"]
-    actual_labels = [label for label, value in zip(labels, values) if value > 0]
-    actual_values = [value for value in values if value > 0]
-    actual_colors = [color for color, value in zip(colors, values) if value > 0]
+
+    actual_labels = [
+        label for label, value in zip(labels, values) if value > 0
+    ]
+    actual_values = [
+        value for value in values if value > 0
+    ]
+    actual_colors = [
+        color for color, value in zip(colors, values) if value > 0
+    ]
+
     ax.pie(
         actual_values,
         colors=actual_colors,
         startangle=90,
         counterclock=False,
-        wedgeprops={"width": 0.30, "edgecolor": "white", "linewidth": 2},
+        wedgeprops={
+            "width": 0.30,
+            "edgecolor": "white",
+            "linewidth": 2
+        },
     )
-    ax.text(0, 0, f"{(values[0] / total) * 100:.0f}%",
-            ha="center", va="center", fontsize=17, fontweight="bold",
-            color="#173B24")
+
+    ax.text(
+        0, 0,
+        f"{(values[0] / total) * 100:.0f}%",
+        ha="center",
+        va="center",
+        fontsize=17,
+        fontweight="bold",
+        color="#173B24",
+    )
+
     ax.legend(
-        [f"{label} ({value})" for label, value in zip(actual_labels, actual_values)],
-        loc="lower center", bbox_to_anchor=(0.5, -0.16),
-        ncol=max(1, min(2, len(actual_labels))), frameon=False,
-        fontsize=8, labelcolor="#26352A",
+        [
+            f"{label} ({value})"
+            for label, value in zip(actual_labels, actual_values)
+        ],
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.16),
+        ncol=max(1, min(2, len(actual_labels))),
+        frameon=False,
+        fontsize=8,
+        labelcolor="#26352A",
     )
+
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.6)
     st.pyplot(fig, use_container_width=True)
@@ -378,14 +530,21 @@ def _render_category_bars(series):
         return
 
     series = series[series > 0].sort_values(ascending=False).head(7)
+
     if series.empty:
         st.info("Aucune catégorie renseignée.")
         return
 
     palette = [
-        "#14532D", "#238442", "#3D9146", "#5DA957",
-        "#79B96C", "#9BCB8D", "#C5DFC0"
+        "#14532D",
+        "#238442",
+        "#3D9146",
+        "#5DA957",
+        "#79B96C",
+        "#9BCB8D",
+        "#C5DFC0"
     ]
+
     colors = palette[:len(series)]
 
     fig, ax = plt.subplots(figsize=(4.8, 3.3), dpi=140)
@@ -397,20 +556,30 @@ def _render_category_bars(series):
         colors=colors,
         startangle=90,
         counterclock=False,
-        wedgeprops={"width": 0.34, "edgecolor": "white", "linewidth": 2.0},
+        wedgeprops={
+            "width": 0.34,
+            "edgecolor": "white",
+            "linewidth": 2.0
+        },
     )
 
     total = int(series.sum())
+
     ax.text(
-        0, 0, f"{total}\nObservations",
-        ha="center", va="center",
-        fontsize=12, fontweight="bold", color="#173B24",
+        0, 0,
+        f"{total}\nObservations",
+        ha="center",
+        va="center",
+        fontsize=12,
+        fontweight="bold",
+        color="#173B24",
     )
 
     legend_labels = [
         f"{str(label)[:22]} ({int(value)})"
         for label, value in zip(series.index, series.values)
     ]
+
     ax.legend(
         wedges,
         legend_labels,
@@ -423,23 +592,32 @@ def _render_category_bars(series):
         handlelength=1.0,
         columnspacing=1.0,
     )
+
     ax.set_aspect("equal")
     fig.tight_layout(pad=0.5)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
 
+def render_dashboard(
+    history_data=None,
+    research_data=None,
+    quality_report=None,
+    pipeline_status=None
+):
+    """FOODNEXA dashboard."""
 
-def render_dashboard(history_data=None, research_data=None, quality_report=None, pipeline_status=None):
-    """FOODNEXA dashboard arranged like the user's reference image."""
     _install_dashboard_style()
 
     history = _df(history_data)
     research = _df(research_data)
 
     risk_col = _column(history, ["risk_level"])
-    risk_score_col = _column(history, ["risk_score"])
-    levels = history[risk_col].map(_risk_label) if risk_col else pd.Series(dtype="object")
+
+    levels = (
+        history[risk_col].map(_risk_label)
+        if risk_col else pd.Series(dtype="object")
+    )
 
     low = int((levels == "Faible").sum())
     moderate = int((levels == "Modéré").sum())
@@ -447,34 +625,71 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
 
     score = _quality_score(quality_report)
     score_text = f"{score:.1f}%" if score is not None else "N/D"
+
     scores = _number_series(history, ["risk_score"])
     average = f"{scores.mean():.1f}/100" if not scores.empty else "N/D"
 
     # Dashboard title
     st.title("Dashboard")
-    st.caption("Monitoring agro-food quality, food safety risks and research data")
+    st.caption(
+        "Monitoring agro-food quality, food safety risks and research data"
+    )
 
-    # Four KPI cards on one line
+    # Four KPI cards
     kpis = st.columns(4, gap="medium")
-    with kpis[0]:
-        _card("Total Analyses", len(history), "Risk assessments", "green", "✓")
-    with kpis[1]:
-        _card("Research Observations", len(research), "Scientific records", "green", "▤")
-    with kpis[2]:
-        _card("High Risk", high, "Requires attention", "red", "!")
-    with kpis[3]:
-        _card("Data Quality", score_text, "Dataset quality score", "navy", "◉")
 
-    st.markdown('<div class="fnx-dashboard-gap"></div>', unsafe_allow_html=True)
+    with kpis[0]:
+        _card(
+            "Total Analyses",
+            len(history),
+            "Risk assessments",
+            "green",
+            "✓"
+        )
+
+    with kpis[1]:
+        _card(
+            "Research Observations",
+            len(research),
+            "Scientific records",
+            "green",
+            "▤"
+        )
+
+    with kpis[2]:
+        _card(
+            "High Risk",
+            high,
+            "Requires attention",
+            "red",
+            "!"
+        )
+
+    with kpis[3]:
+        _card(
+            "Data Quality",
+            score_text,
+            "Dataset quality score",
+            "navy",
+            "◉"
+        )
+
+    st.markdown(
+        '<div class="fnx-dashboard-gap"></div>',
+        unsafe_allow_html=True
+    )
 
     # Main dashboard: left analytics, right activity/history
     left, right = st.columns([0.88, 1.62], gap="medium")
 
     with left:
-        st.markdown('<div class="fnx-section-title">Conformity Rate</div>', unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="fnx-section-title">Risk Distribution</div>',
+            unsafe_allow_html=True
+        )
+
         if not history.empty and risk_col:
-            # Low risk is separated from moderate/high risk.
-            # This is a risk indicator, not a regulatory conformity decision.
             _render_donut(
                 ["Low Risk", "Moderate / High Risk"],
                 [low, moderate + high],
@@ -482,96 +697,171 @@ def render_dashboard(history_data=None, research_data=None, quality_report=None,
         else:
             st.info("Aucune évaluation disponible.")
 
-        st.markdown('<div class="fnx-section-title">Product Category Distribution</div>', unsafe_allow_html=True)
-        category_col = _column(research, ["product_category", "product_name"])
+        st.markdown(
+            '<div class="fnx-section-title">Product Category Distribution</div>',
+            unsafe_allow_html=True
+        )
+
+        category_col = _column(
+            research,
+            ["product_category", "product_name"]
+        )
+
         if category_col and not research.empty:
             categories = (
-                research[category_col].map(_text)
-                .replace("", pd.NA).dropna().value_counts()
+                research[category_col]
+                .map(_text)
+                .replace("", pd.NA)
+                .dropna()
+                .value_counts()
             )
+
             if not categories.empty:
                 _render_category_bars(categories)
             else:
                 st.caption("Aucune catégorie renseignée.")
         else:
-            st.caption("Les catégories apparaîtront après l'enregistrement des observations.")
+            st.caption(
+                "Les catégories apparaîtront après "
+                "l'enregistrement des observations."
+            )
 
         st.caption(
             "Répartition circulaire des niveaux de risque. "
-            "Les catégories ne constituent pas une décision réglementaire de conformité."
+            "Les catégories ne constituent pas une décision "
+            "réglementaire de conformité."
         )
 
     with right:
-        st.markdown('<div class="fnx-section-title">Recent Activity</div>', unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="fnx-section-title">Recent Activity</div>',
+            unsafe_allow_html=True
+        )
+
         activity = []
+
         if not history.empty:
             for _, row in history.tail(8).iterrows():
                 activity.append({
-                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
+                    "Date": _text(
+                        row.get("analysis_date", row.get("created_at", ""))
+                    ),
                     "Sample ID": _text(row.get("batch_id", "")),
                     "Product": _text(row.get("product_name", "")),
                     "Result": _text(row.get("risk_level", "")),
                 })
+
         if not research.empty:
             for _, row in research.tail(8).iterrows():
                 activity.append({
-                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
+                    "Date": _text(
+                        row.get("analysis_date", row.get("created_at", ""))
+                    ),
                     "Sample ID": _text(row.get("batch_id", "")),
                     "Product": _text(row.get("product_name", "")),
                     "Result": "Research observation",
                 })
+
         if activity:
             activity_df = pd.DataFrame(activity)
-            activity_df["_sort"] = pd.to_datetime(activity_df["Date"], errors="coerce", utc=True)
-            activity_df = activity_df.sort_values("_sort", ascending=False, na_position="last").drop(columns="_sort")
-            st.dataframe(activity_df.head(6), use_container_width=True, hide_index=True, height=210)
+
+            activity_df["_sort"] = pd.to_datetime(
+                activity_df["Date"],
+                errors="coerce",
+                utc=True
+            )
+
+            activity_df = (
+                activity_df
+                .sort_values(
+                    "_sort",
+                    ascending=False,
+                    na_position="last"
+                )
+                .drop(columns="_sort")
+            )
+
+            st.dataframe(
+                activity_df.head(6),
+                use_container_width=True,
+                hide_index=True,
+                height=210
+            )
         else:
             st.info("Aucune activité récente.")
 
-        st.markdown('<div class="fnx-section-title">Analysis History</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="fnx-section-title">Analysis History</div>',
+            unsafe_allow_html=True
+        )
+
         if not history.empty:
+
             history_rows = []
+
             for _, row in history.tail(7).iloc[::-1].iterrows():
                 history_rows.append({
                     "Date": _text(row.get("analysis_date", "")),
                     "Sample ID": _text(row.get("batch_id", "")),
                     "Product": _text(row.get("product_name", "")),
-                    "Analyst": _text(row.get("analyst", row.get("analyst_name", "—"))) or "—",
+                    "Analyst": _text(
+                        row.get("analyst", row.get("analyst_name", "—"))
+                    ) or "—",
                     "Result": _text(row.get("risk_level", "")),
                 })
+
             st.dataframe(
                 pd.DataFrame(history_rows),
                 use_container_width=True,
                 hide_index=True,
                 height=245,
             )
+
         else:
             st.info("Aucun historique disponible.")
 
-    # Less frequently used technical details remain accessible without
-    # pushing the main dashboard below the fold.
+    # Technical details
     with st.expander("Data Quality & System Status", expanded=False):
+
         q1, q2, q3 = st.columns(3)
+
         q1.metric("Quality Score", score_text)
         q2.metric("Research Observations", len(research))
         q3.metric("Exact Duplicates", _safe_duplicates(research))
 
         issues = _engine_issues(quality_report)
+
         if issues:
             st.markdown("**Quality issues to review**")
-            st.dataframe(pd.DataFrame(issues), use_container_width=True, hide_index=True)
+            st.dataframe(
+                pd.DataFrame(issues),
+                use_container_width=True,
+                hide_index=True
+            )
+
         elif research.empty:
-            st.info("En attente de données pour le contrôle qualité.")
+            st.info(
+                "En attente de données pour le contrôle qualité."
+            )
+
         else:
-            st.success("Aucune anomalie signalée par le rapport qualité.")
+            st.success(
+                "Aucune anomalie signalée par le rapport qualité."
+            )
 
         if isinstance(pipeline_status, dict) and pipeline_status:
+
             st.markdown("**FOODNEXA System Pipeline**")
+
             for name, status in pipeline_status.items():
+
                 if status is True:
                     st.success(f"{name} — Disponible")
+
                 elif status is False:
                     st.warning(f"{name} — Indisponible")
+
                 else:
                     st.info(f"{name} — Statut non confirmé")
 
