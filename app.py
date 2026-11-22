@@ -3366,56 +3366,40 @@ section[data-testid="stSidebar"] {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# FOODNEXA V27 — REMOVE EMPTY SPACE WHEN SIDEBAR IS CLOSED
-# The previous CSS forced a fixed sidebar width even when Streamlit
-# collapsed it. This override releases that width so the dashboard
-# expands into the available viewport.
+# FOODNEXA V28 — RECLAIM MAIN AREA WHEN SIDEBAR IS COLLAPSED
+# Streamlit 1.67 uses data-collapsed="true|false" on stSidebar.
+# The app's older CSS still pins the sidebar width, so a negative
+# outer margin is needed to release that reserved flex-layout space.
 # =====================================================
 st.markdown("""
 <style>
-/* Expanded sidebar: keep the intended navigation width. */
-section[data-testid="stSidebar"][aria-expanded="true"] {
+/* Keep the existing designed width when navigation is expanded. */
+section[data-testid="stSidebar"][data-collapsed="false"] {
     width: 238px !important;
     min-width: 238px !important;
     max-width: 238px !important;
     flex: 0 0 238px !important;
-    transform: translateX(0) !important;
-    overflow: visible !important;
+    margin-left: 0 !important;
 }
-section[data-testid="stSidebar"][aria-expanded="true"] > div {
+
+/* When collapsed, move the sidebar's reserved slot out of the layout.
+   Do not set width:0: Streamlit still owns the collapse animation/control. */
+section[data-testid="stSidebar"][data-collapsed="true"] {
     width: 238px !important;
     min-width: 238px !important;
+    max-width: 238px !important;
+    flex: 0 0 238px !important;
+    margin-left: -238px !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
 }
 
-/* Collapsed sidebar: remove its reserved width, not just its contents. */
-section[data-testid="stSidebar"][aria-expanded="false"] {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    flex: 0 0 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    overflow: hidden !important;
-    transform: translateX(-100%) !important;
-}
-section[data-testid="stSidebar"][aria-expanded="false"] > div,
-section[data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarContent"],
-section[data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-}
-
-/* Let the main dashboard use all the space released by the sidebar. */
+/* Main area must be allowed to grow into the released 238px. */
 [data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewContainer"] [data-testid="stMain"] {
     min-width: 0 !important;
-    width: 100% !important;
     flex: 1 1 auto !important;
+    width: auto !important;
 }
 [data-testid="stMainBlockContainer"],
 .block-container {
@@ -3423,12 +3407,11 @@ section[data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarU
     max-width: none !important;
 }
 
-/* Keep the native expand control accessible while the sidebar is closed. */
-section[data-testid="stSidebar"][aria-expanded="false"] ~ [data-testid="stSidebarCollapsedControl"],
+/* The native expand control remains clickable while the sidebar is closed. */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"] {
-    visibility: visible !important;
     display: flex !important;
+    visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     z-index: 2147483001 !important;
