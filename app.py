@@ -872,7 +872,10 @@ html, body, [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-tes
 [data-testid="stMainBlockContainer"], .main, .block-container {background:var(--fnx-canvas)!important;color:var(--fnx-ink)!important;}
 /* Keep Streamlit header available: it contains the collapsed-sidebar expand control. */
 [data-testid="stHeader"] {visibility:visible!important;display:flex!important;height:2.5rem!important;background:transparent!important;}
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stDeployButton"] {visibility:hidden!important;height:0!important;display:none!important;}
+/* Keep Streamlit toolbar mounted: the collapsed-sidebar opener may live inside it. */
+[data-testid="stToolbar"] {visibility:visible!important;display:flex!important;opacity:1!important;height:auto!important;min-height:2.5rem!important;pointer-events:auto!important;}
+/* Hide only decorative/deploy elements, never the toolbar that contains navigation controls. */
+[data-testid="stDecoration"], [data-testid="stDeployButton"] {visibility:hidden!important;display:none!important;}
 .block-container, [data-testid="stMainBlockContainer"] {max-width:none!important;width:100%!important;padding:.35rem .8rem .65rem!important;overflow:visible!important;}
 [data-testid="stAppViewContainer"] .main p,[data-testid="stAppViewContainer"] .main li {font-size:12px!important;line-height:1.35!important;}
 .fnx-hero {width:100%;margin:0 0 10px;overflow:hidden;border:1px solid #D5E8DC;border-radius:0 0 15px 15px;background:#F5FAF7;box-shadow:0 3px 12px rgba(13,78,48,.06);}
