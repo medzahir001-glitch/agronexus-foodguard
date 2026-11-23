@@ -1,525 +1,747 @@
-import html
-import json
-import math
 
+import html
 import pandas as pd
 import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+GREEN = "#176B3A"
+AMBER = "#D99121"
+RED = "#C83E3E"
+GREY = "#AAB5AC"
 
 
-# ============================================================
-# FOODNEXA - COMPACT ENTERPRISE DASHBOARD
-# Compatible with render_dashboard(...) called from app.py
-# Source data is read-only.
-# ============================================================
-
-def _df(value):
-    if value is None:
+def to_df(data):
+    if data is None:
         return pd.DataFrame()
-    if isinstance(value, pd.DataFrame):
-        return value.copy()
+    if isinstance(data, pd.DataFrame):
+        return data.copy()
     try:
-        return pd.DataFrame(value)
+        return pd.DataFrame(data)
     except Exception:
         return pd.DataFrame()
 
 
-def _missing(value):
-    if value is None:
-        return True
-    if isinstance(value, str):
-        return value.strip().casefold() in {"", "nan", "none", "null", "n/a"}
-    if isinstance(value, (dict, list, tuple, set)):
-        return len(value) == 0
-    try:
-        result = pd.isna(value)
-        if getattr(result, "ndim", 0) == 0:
-            return bool(result)
-    except (TypeError, ValueError):
-        pass
-    return False
-
-
-def _text(value):
-    if _missing(value):
-        return ""
-    if isinstance(value, (dict, list, tuple)):
-        return json.dumps(value, ensure_ascii=False, default=str, sort_keys=True)
-    return str(value).strip()
-
-
-def _column(df, names):
-    if df.empty:
-        return None
-    lookup = {str(c).strip().casefold(): c for c in df.columns}
+def find_col(df, *names):
+    columns = {str(c).strip().lower(): c for c in df.columns}
     for name in names:
-        if name.casefold() in lookup:
-            return lookup[name.casefold()]
+        if name.lower() in columns:
+            return columns[name.lower()]
     return None
 
 
-def _number_series(df, names):
-    col = _column(df, names)
-    if col is None:
-        return pd.Series(dtype="float64")
-    return pd.to_numeric(df[col], errors="coerce").dropna()
+def risk_label(value):
+    value = str(value).strip().lower()
+    if value in ("faible", "low"):
+        return "Faible"
+    if value in ("modéré", "modere", "moderate", "medium"):
+        return "Modéré"
+    if value in ("élevé", "eleve", "high"):
+        return "Élevé"
+    if "incomplet" in value:
+        return "Données incomplètes"
+    return "Non classé"
 
 
-def _risk_label(value):
-    raw = _text(value).casefold()
-    mapping = {
-        "faible": "Faible", "low": "Faible",
-        "modéré": "Modéré", "modere": "Modéré",
-        "moderate": "Modéré", "medium": "Modéré",
-        "élevé": "Élevé", "eleve": "Élevé", "high": "Élevé",
-    }
-    return mapping.get(raw)
+def prepare_history(data):
+    df = to_df(data)
 
-
-def _safe_duplicates(df):
     if df.empty:
-        return 0
-    seen, duplicates = set(), 0
-    for row in df.itertuples(index=False, name=None):
-        try:
-            normalized = tuple(
-                json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)
-                if isinstance(v, (dict, list, tuple))
-                else (None if _missing(v) else str(v))
-                for v in row
-            )
-            if normalized in seen:
-                duplicates += 1
-            else:
-                seen.add(normalized)
-        except Exception:
-            continue
-    return duplicates
+        return df
+
+    batch = find_col(df, "batch_id", "batch_code")
+    product = find_col(df, "product_name", "product")
+    risk = find_col(df, "risk_level", "risk_status")
+    score = find_col(df, "risk_score", "risk_index", "score")
+    date = find_col(df, "analysis_date", "created_at", "date")
+
+    df["_batch"] = (
+        df[batch].fillna("").astype(str) if batch else ""
+    )
+
+    df["_product"] = (
+        df[product].fillna("Non renseigné").astype(str)
+        if product else "Non renseigné"
+    )
+
+    df["_risk"] = (
+        df[risk].map(risk_label) if risk else "Non classé"
+    )
+
+    df["_score"] = (
+        pd.to_numeric(df[score], errors="coerce")
+        if score else float("nan")
+    )
+
+    df["_date"] = (
+        pd.to_datetime(df[date], errors="coerce", utc=True)
+        if date else pd.NaT
+    )
+
+    return df
 
 
-def _quality_score(report):
-    if not isinstance(report, dict):
-        return None
-    for key in ("quality_score", "overall_score", "score", "quality_percentage"):
-        try:
-            value = float(report.get(key))
-            if math.isfinite(value):
-                return value
-        except (TypeError, ValueError):
-            pass
-    return None
-
-
-def _engine_issues(report):
-    if not isinstance(report, dict):
-        return []
-    raw = report.get("issues", [])
-    if not isinstance(raw, list):
-        return []
-    output = []
-    for item in raw[:40]:
-        if isinstance(item, dict):
-            output.append({
-                "Ligne": item.get("Ligne", item.get("row", "—")),
-                "Champ": item.get("Champ", item.get("field", "—")),
-                "Anomalie": item.get(
-                    "Problème",
-                    item.get("issue", item.get("message", item.get("type", "À vérifier")))
-                ),
-                "Niveau": item.get(
-                    "Niveau",
-                    item.get("priority", item.get("severity", "À vérifier"))
-                ),
-            })
-        else:
-            output.append({
-                "Ligne": "—", "Champ": "—",
-                "Anomalie": str(item), "Niveau": "À vérifier"
-            })
-    return output
-
-
-def _card(label, value, detail="", accent="blue", icon=""):
-    palette = {
-        "blue": "#0B6F91",
-        "green": "#15966F",
-        "red": "#D94B4B",
-        "amber": "#D99121",
-        "navy": "#173B5E",
-    }
-    color = palette.get(accent, palette["blue"])
+def kpi(label, value, color=GREEN, note=""):
     st.markdown(
         f"""
-        <div class="fnx-kpi" style="border-top:4px solid {color}">
-          <div class="fnx-kpi-label">{html.escape(str(icon))} {html.escape(str(label))}</div>
-          <div class="fnx-kpi-value">{html.escape(str(value))}</div>
-          <div class="fnx-kpi-detail">{html.escape(str(detail))}</div>
+        <div style="
+        background:white;
+        border:1px solid #e1e9e2;
+        border-top:3px solid {color};
+        border-radius:9px;
+        padding:9px;
+        min-height:76px;">
+        <div style="font-size:10px;color:#68766b;font-weight:700">
+        {html.escape(str(label))}
+        </div>
+        <div style="font-size:21px;color:#14532d;font-weight:850">
+        {html.escape(str(value))}
+        </div>
+        <div style="font-size:9px;color:#829087">
+        {html.escape(str(note))}
+        </div>
         </div>
         """,
-        unsafe_allow_html=True,
+        unsafe_allow_html=True
     )
 
 
-def _install_dashboard_style():
-    st.markdown(
-        """
-        <style>
-        :root {
-          --fnx-navy:#124B27; --fnx-blue:#1D6536; --fnx-teal:#258A4A;
-          --fnx-green:#2F8F46; --fnx-ink:#17251B; --fnx-muted:#66756A;
-          --fnx-border:#DDE8DE; --fnx-bg:#F5F7F5;
-        }
-        [data-testid="stAppViewContainer"], [data-testid="stMain"],
-        [data-testid="stMainBlockContainer"], .main, .block-container {
-          background:#F5F7F5 !important;
-        }
-        .block-container {
-          width:100% !important; max-width:none !important;
-          padding:.75rem 1.15rem 1.1rem !important;
-        }
-        [data-testid="stMainBlockContainer"] {
-          width:100% !important; max-width:none !important;
-        }
-        [data-testid="stSidebar"] {
-          min-width:250px !important; max-width:250px !important;
-          background:#124B27 !important;
-          border-right:1px solid #DDE8DE !important;
-        }
-        [data-testid="stSidebar"] * {color:#FFFFFF !important;}
-        [data-testid="stSidebar"] [data-testid="stRadio"] label {
-          background:rgba(255,255,255,.07); border-radius:8px;
-          padding:7px 10px; margin:2px 0;
-        }
-        [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-          background:rgba(255,255,255,.16);
-        }
-        [data-testid="stAppViewContainer"] .main p,
-        [data-testid="stAppViewContainer"] .main li,
-        [data-testid="stAppViewContainer"] .main label,
-        [data-testid="stAppViewContainer"] .main span {
-          color:var(--fnx-ink);
-        }
-        [data-testid="stAppViewContainer"] .main h1 {
-          color:#14532D !important; font-size:1.55rem !important;
-          font-weight:850 !important; letter-spacing:-1.1px !important;
-          margin-bottom:.15rem !important;
-        }
-        [data-testid="stAppViewContainer"] .main h2 {
-          color:#174B2A !important; font-size:.88rem !important;
-          font-weight:800 !important;
-        }
-        [data-testid="stAppViewContainer"] .main h3 {
-          color:#236B3A !important; font-size:.88rem !important;
-          font-weight:750 !important;
-        }
-        [data-testid="stAppViewContainer"] .main [data-testid="stCaptionContainer"] p {
-          color:#526357 !important;
-        }
-        .fnx-kpi {
-          background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:12px; padding:8px 10px; min-height:70px;
-          box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
-        }
-        .fnx-kpi-label {font-size:.62rem; color:#536357; font-weight:700;}
-        .fnx-kpi-value {font-size:1.15rem; line-height:1.25; color:#14532D; font-weight:850;}
-        .fnx-kpi-detail {font-size:.59rem; color:#718075; margin-top:3px;}
-        .fnx-section-title {
-          color:#174B2A; font-size:.94rem; font-weight:800;
-          margin:3px 0 5px; padding-bottom:4px;
-          border-bottom:1px solid #DDE8DE;
-        }
-        div[data-testid="stDataFrame"] {
-          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-radius:10px !important; overflow:hidden !important;
-          box-shadow:0 2px 9px rgba(20,65,35,.045);
-          font-size:.78rem !important;
-        }
-        div[data-testid="stDataFrame"] * {color:#203648 !important;}
-        [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"],
-        [data-testid="stPyplotChart"] {background:#FFFFFF !important;}
-        div[data-testid="stMetric"] {
-          background:#FFFFFF !important; border:1px solid var(--fnx-border) !important;
-          border-left:4px solid #2F8F46 !important; border-radius:12px !important;
-          box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
-        }
-        div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
-        .fnx-dashboard-gap {height:3px;}
-        [data-testid="stVerticalBlock"] {gap:.55rem !important;}
-        [data-testid="stHorizontalBlock"] {gap:.65rem !important;}
-        [data-testid="stMarkdownContainer"] p {font-size:.78rem;}
-        [data-testid="stCaptionContainer"] p {font-size:.66rem !important;}
-        [data-testid="stDataFrame"] {font-size:.70rem !important;}
-        div[data-testid="stMetric"] {padding:8px 10px !important;}
-        .fnx-pill {
-          display:inline-block; padding:4px 9px; border-radius:30px;
-          background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
-        }
-        hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
-        @media (max-width: 900px) {
-          .block-container {padding-left:.65rem !important; padding-right:.65rem !important;}
-          [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
-          [data-testid="stAppViewContainer"] .main h1 {font-size:1.5rem !important;}
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _render_donut(labels, values):
-    """Interactive Plotly doughnut for risk distribution."""
-    try:
-        import plotly.graph_objects as go
-    except ImportError:
-        st.error("Plotly n'est pas installé. Ajoutez plotly dans requirements.txt.")
-        return
-
-    clean = [(str(label), int(value)) for label, value in zip(labels, values) if value and value > 0]
-    total = sum(value for _, value in clean)
-    if total <= 0:
-        st.info("Aucune évaluation disponible.")
-        return
-
-    low_value = next((value for label, value in clean if label.casefold() in {"low risk", "faible"}), 0)
-    center_rate = (low_value / total) * 100
-
-    fig = go.Figure(data=[go.Pie(
-        labels=[label for label, _ in clean],
-        values=[value for _, value in clean],
-        hole=0.68,
-        sort=False,
-        direction="clockwise",
-        marker=dict(colors=["#14532D", "#B91C1C", "#D9E8D9"][:len(clean)],
-                    line=dict(color="#FFFFFF", width=2)),
-        textinfo="none",
-        hovertemplate="<b>%{label}</b><br>Lots: %{value}<br>Part: %{percent}<extra></extra>",
-    )])
+def chart_style(fig, height=260):
     fig.update_layout(
-        height=235,
-        margin=dict(l=8, r=8, t=8, b=42),
-        paper_bgcolor="#FFFFFF",
-        plot_bgcolor="#FFFFFF",
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="top", y=-0.08,
-                    xanchor="center", x=0.5, font=dict(size=10, color="#26352A")),
-        annotations=[dict(text=f"{center_rate:.0f}%<br><span style='font-size:10px'>Low risk</span>",
-                          x=0.5, y=0.5, showarrow=False,
-                          font=dict(size=22, color="#173B24", family="Arial"))],
-        font=dict(family="Arial", color="#26352A", size=10),
+        height=height,
+        margin=dict(l=10, r=10, t=25, b=10),
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        font=dict(size=10, color="#173B27"),
+        legend=dict(
+            orientation="h",
+            y=-0.22,
+            x=0
+        )
     )
-    st.plotly_chart(fig, use_container_width=True,
-                    config={"displayModeBar": False, "responsive": True},
-                    key="foodnexa_risk_donut")
+    return fig
 
 
-def _render_category_bars(series):
-    """Interactive Plotly doughnut for product categories."""
-    try:
-        import plotly.graph_objects as go
-    except ImportError:
-        st.error("Plotly n'est pas installé. Ajoutez plotly dans requirements.txt.")
+def risk_distribution(df):
+    if df.empty:
+        st.info("Aucune donnée disponible.")
         return
 
-    series = series[series > 0].sort_values(ascending=False).head(7)
-    if series.empty:
-        st.info("Aucune catégorie renseignée.")
+    counts = df["_risk"].value_counts()
+
+    colors = {
+        "Faible": GREEN,
+        "Modéré": AMBER,
+        "Élevé": RED,
+        "Données incomplètes": "#7B8794",
+        "Non classé": GREY
+    }
+
+    fig = go.Figure(
+        go.Pie(
+            labels=counts.index,
+            values=counts.values,
+            hole=0.65,
+            marker=dict(
+                colors=[
+                    colors.get(x, GREY)
+                    for x in counts.index
+                ],
+                line=dict(color="white", width=2)
+            ),
+            textinfo="percent"
+        )
+    )
+
+    fig.add_annotation(
+        text=f"<b>{len(df)}</b><br><sup>Analyses</sup>",
+        x=0.5,
+        y=0.5,
+        showarrow=False
+    )
+
+    st.plotly_chart(
+        chart_style(fig, 250),
+        use_container_width=True,
+        key="fnx_risk_chart"
+    )
+
+
+def risk_evolution(df):
+    dated = df.dropna(subset=["_date"]).copy()
+
+    if dated.empty:
+        st.info("Dates non disponibles.")
         return
 
-    palette = ["#14532D", "#238442", "#3D9146", "#5DA957",
-               "#79B96C", "#9BCB8D", "#C5DFC0"]
-    fig = go.Figure(data=[go.Pie(
-        labels=[str(label) for label in series.index],
-        values=[int(value) for value in series.values],
-        hole=0.68,
-        sort=False,
-        direction="clockwise",
-        marker=dict(colors=palette[:len(series)],
-                    line=dict(color="#FFFFFF", width=2)),
-        textinfo="none",
-        hovertemplate="<b>%{label}</b><br>Observations: %{value}<br>Part: %{percent}<extra></extra>",
-    )])
+    dated["_day"] = dated["_date"].dt.strftime("%Y-%m-%d")
+
+    trend = (
+        dated.groupby(["_day", "_risk"])
+        .size()
+        .reset_index(name="Analyses")
+    )
+
+    fig = px.line(
+        trend,
+        x="_day",
+        y="Analyses",
+        color="_risk",
+        markers=True,
+        color_discrete_map={
+            "Faible": GREEN,
+            "Modéré": AMBER,
+            "Élevé": RED
+        }
+    )
+
     fig.update_layout(
-        height=235,
-        margin=dict(l=8, r=8, t=8, b=42),
-        paper_bgcolor="#FFFFFF",
-        plot_bgcolor="#FFFFFF",
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="top", y=-0.08,
-                    xanchor="center", x=0.5, font=dict(size=9, color="#26352A")),
-        annotations=[dict(text=f"{int(series.sum())}<br><span style='font-size:10px'>Observations</span>",
-                          x=0.5, y=0.5, showarrow=False,
-                          font=dict(size=20, color="#173B24", family="Arial"))],
-        font=dict(family="Arial", color="#26352A", size=10),
+        xaxis_title=None,
+        yaxis_title="Nombre d'analyses"
     )
-    st.plotly_chart(fig, use_container_width=True,
-                    config={"displayModeBar": False, "responsive": True},
-                    key="foodnexa_category_donut")
+
+    st.plotly_chart(
+        chart_style(fig, 250),
+        use_container_width=True,
+        key="fnx_evolution_chart"
+    )
 
 
-def render_dashboard(history_data=None, research_data=None,
-                    quality_report=None, pipeline_status=None):
-    """FOODNEXA dashboard. Compatible with the app.py call signature."""
-    _install_dashboard_style()
+def lot_intelligence(df):
+    st.subheader("📦 Lot Intelligence")
 
-    history = _df(history_data)
-    research = _df(research_data)
+    lots = sorted(
+        x for x in df["_batch"].unique()
+        if str(x).strip()
+    )
 
-    risk_col = _column(history, ["risk_level"])
-    levels = history[risk_col].map(_risk_label) if risk_col else pd.Series(dtype="object")
-    low = int((levels == "Faible").sum())
-    moderate = int((levels == "Modéré").sum())
-    high = int((levels == "Élevé").sum())
+    if not lots:
+        st.info("Aucun Batch ID disponible.")
+        return
 
-    score = _quality_score(quality_report)
-    score_text = f"{score:.1f}%" if score is not None else "N/D"
+    selected = st.selectbox(
+        "Choisir un lot",
+        lots,
+        key="fnx_selected_lot"
+    )
 
-    st.title("Dashboard")
-    st.caption("Monitoring agro-food quality, food safety risks and research data")
+    lot = df[df["_batch"] == selected].copy()
 
-    kpis = st.columns(4, gap="medium")
-    with kpis[0]:
-        _card("Total Analyses", len(history), "Risk assessments", "green", "✓")
-    with kpis[1]:
-        _card("Research Observations", len(research), "Scientific records", "green", "▤")
-    with kpis[2]:
-        _card("High Risk", high, "Requires attention", "red", "!")
-    with kpis[3]:
-        _card("Data Quality", score_text, "Dataset quality score", "navy", "◉")
+    lot = lot.sort_values(
+        "_date",
+        ascending=False
+    )
 
-    st.markdown('<div class="fnx-dashboard-gap"></div>', unsafe_allow_html=True)
+    latest = lot.iloc[0]
 
-    left, right = st.columns([0.88, 1.62], gap="medium")
+    score = latest["_score"]
+    level = latest["_risk"]
 
-    with left:
-        st.markdown(
-            '<div class="fnx-section-title">Risk Distribution</div>',
-            unsafe_allow_html=True,
-        )
-        if not history.empty and risk_col:
-            _render_donut(
-                ["Low Risk", "Moderate / High Risk"],
-                [low, moderate + high],
-            )
-        else:
-            st.info("Aucune évaluation disponible.")
+    color = (
+        RED if level == "Élevé"
+        else AMBER if level == "Modéré"
+        else GREEN
+    )
 
-        st.markdown(
-            '<div class="fnx-section-title">Product Category Distribution</div>',
-            unsafe_allow_html=True,
-        )
-        category_col = _column(research, ["product_category", "product_name"])
-        if category_col and not research.empty:
-            categories = (
-                research[category_col].map(_text)
-                .replace("", pd.NA).dropna().value_counts()
-            )
-            if not categories.empty:
-                _render_category_bars(categories)
-            else:
-                st.caption("Aucune catégorie renseignée.")
-        else:
-            st.caption(
-                "Les catégories apparaîtront après l'enregistrement des observations."
-            )
+    a, b, c, d = st.columns(4)
 
-        st.caption(
-            "Répartition circulaire des niveaux de risque. "
-            "Les catégories ne constituent pas une décision réglementaire de conformité."
+    with a:
+        kpi("Batch ID", selected)
+
+    with b:
+        kpi(
+            "Risk Score",
+            f"{score:.1f}/100" if pd.notna(score) else "N/D",
+            color
         )
 
-    with right:
-        st.markdown(
-            '<div class="fnx-section-title">Recent Activity</div>',
-            unsafe_allow_html=True,
+    with c:
+        kpi("Risk Level", level, color)
+
+    with d:
+        kpi("Nombre d'analyses", len(lot))
+
+    st.markdown("**Paramètres enregistrés**")
+
+    parameters = [
+        ("Température °C", ("temperature_celsius", "temperature")),
+        ("Stockage jours", ("storage_days",)),
+        ("pH", ("ph",)),
+        ("Rupture chaîne du froid", ("cold_chain_broken",)),
+        ("Hygiène contrôlée", ("hygiene_controlled",)),
+        ("Pasteurisation", ("pasteurized",))
+    ]
+
+    rows = []
+
+    for label, aliases in parameters:
+        col = find_col(lot, *aliases)
+
+        if col:
+            value = latest[col]
+
+            rows.append({
+                "Paramètre": label,
+                "Valeur": (
+                    "Non renseigné"
+                    if pd.isna(value)
+                    else str(value)
+                )
+            })
+
+    if rows:
+        st.dataframe(
+            pd.DataFrame(rows),
+            use_container_width=True,
+            hide_index=True
         )
-        activity = []
-        if not history.empty:
-            for _, row in history.tail(8).iterrows():
-                activity.append({
-                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
-                    "Sample ID": _text(row.get("batch_id", "")),
-                    "Product": _text(row.get("product_name", "")),
-                    "Result": _text(row.get("risk_level", "")),
-                })
-        if not research.empty:
-            for _, row in research.tail(8).iterrows():
-                activity.append({
-                    "Date": _text(row.get("analysis_date", row.get("created_at", ""))),
-                    "Sample ID": _text(row.get("batch_id", "")),
-                    "Product": _text(row.get("product_name", "")),
-                    "Result": "Research observation",
-                })
+    else:
+        st.info("Aucun paramètre détaillé disponible.")
 
-        if activity:
-            activity_df = pd.DataFrame(activity)
-            activity_df["_sort"] = pd.to_datetime(
-                activity_df["Date"], errors="coerce", utc=True
-            )
-            activity_df = (
-                activity_df.sort_values(
-                    "_sort", ascending=False, na_position="last"
-                ).drop(columns="_sort")
-            )
-            st.dataframe(
-                activity_df.head(6), use_container_width=True,
-                hide_index=True, height=175,
-            )
-        else:
-            st.info("Aucune activité récente.")
+    factor_columns = [
+        c for c in lot.columns
+        if str(c).endswith("_score")
+        and c not in ("risk_score", "_score")
+    ]
 
-        st.markdown(
-            '<div class="fnx-section-title">Analysis History</div>',
-            unsafe_allow_html=True,
+    factors = []
+
+    for col in factor_columns:
+        value = pd.to_numeric(
+            pd.Series([latest[col]]),
+            errors="coerce"
+        ).iloc[0]
+
+        if pd.notna(value):
+            factors.append({
+                "Facteur": str(col).replace(
+                    "_score", ""
+                ).replace("_", " ").title(),
+                "Score": value
+            })
+
+    if factors:
+        st.markdown("**Facteurs de risque enregistrés**")
+
+        factor_df = pd.DataFrame(factors)
+
+        fig = px.bar(
+            factor_df.sort_values("Score"),
+            x="Score",
+            y="Facteur",
+            orientation="h",
+            color_discrete_sequence=[GREEN]
         )
-        if not history.empty:
-            history_rows = []
-            for _, row in history.tail(7).iloc[::-1].iterrows():
-                history_rows.append({
-                    "Date": _text(row.get("analysis_date", "")),
-                    "Sample ID": _text(row.get("batch_id", "")),
-                    "Product": _text(row.get("product_name", "")),
-                    "Analyst": _text(
-                        row.get("analyst", row.get("analyst_name", "—"))
-                    ) or "—",
-                    "Result": _text(row.get("risk_level", "")),
-                })
-            st.dataframe(
-                pd.DataFrame(history_rows),
-                use_container_width=True,
-                hide_index=True,
-                height=205,
+
+        st.plotly_chart(
+            chart_style(fig, max(210, len(factors) * 35)),
+            use_container_width=True
+        )
+
+    for label, candidates in [
+        ("Raisons", ("reasons",)),
+        ("Recommandations", ("recommendations",))
+    ]:
+        col = find_col(lot, *candidates)
+
+        if col and pd.notna(latest[col]):
+            st.markdown(f"**{label} enregistrées**")
+
+            value = latest[col]
+
+            items = (
+                value if isinstance(value, (list, tuple))
+                else str(value).split("|")
             )
-        else:
-            st.info("Aucun historique disponible.")
 
-    with st.expander("Data Quality & System Status", expanded=False):
-        q1, q2, q3 = st.columns(3)
-        q1.metric("Quality Score", score_text)
-        q2.metric("Research Observations", len(research))
-        q3.metric("Exact Duplicates", _safe_duplicates(research))
+            for item in items:
+                if str(item).strip():
+                    st.write("• " + str(item).strip())
 
-        issues = _engine_issues(quality_report)
-        if issues:
-            st.markdown("**Quality issues to review**")
-            st.dataframe(
-                pd.DataFrame(issues), use_container_width=True, hide_index=True
+    st.markdown("**Historique du lot**")
+
+    st.dataframe(
+        pd.DataFrame({
+            "Date": lot["_date"].dt.strftime(
+                "%Y-%m-%d %H:%M"
+            ).fillna("—"),
+            "Risk Score": lot["_score"].round(1),
+            "Niveau": lot["_risk"]
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+def compare_lots(df):
+    st.subheader("📊 Comparaison des lots")
+
+    lots = sorted(
+        x for x in df["_batch"].unique()
+        if str(x).strip()
+    )
+
+    if len(lots) < 2:
+        st.info("Il faut au moins deux lots.")
+        return
+
+    selected = st.multiselect(
+        "Sélectionner les lots",
+        lots,
+        default=lots[:min(3, len(lots))],
+        max_selections=8,
+        key="fnx_compare_selection"
+    )
+
+    if len(selected) < 2:
+        return
+
+    sub = df[df["_batch"].isin(selected)].sort_values("_date")
+
+    summary = sub.groupby(
+        "_batch",
+        as_index=False
+    ).agg(
+        Produit=("_product", "last"),
+        Analyses=("_batch", "size"),
+        Score_moyen=("_score", "mean"),
+        Dernier_score=("_score", "last"),
+        Niveau=("_risk", "last")
+    )
+
+    summary["Score_moyen"] = summary["Score_moyen"].round(1)
+    summary["Dernier_score"] = summary["Dernier_score"].round(1)
+
+    st.dataframe(
+        summary,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    valid = summary.dropna(subset=["Dernier_score"])
+
+    if not valid.empty:
+        fig = px.bar(
+            valid,
+            x="_batch",
+            y="Dernier_score",
+            color="Niveau",
+            color_discrete_map={
+                "Faible": GREEN,
+                "Modéré": AMBER,
+                "Élevé": RED
+            },
+            text="Dernier_score",
+            labels={
+                "_batch": "Lot",
+                "Dernier_score": "Risk Score"
+            }
+        )
+
+        st.plotly_chart(
+            chart_style(fig, 260),
+            use_container_width=True
+        )
+
+
+def research_explorer(data):
+    st.subheader("🧬 Research Explorer")
+
+    research = to_df(data)
+
+    if research.empty:
+        st.info("Aucune observation scientifique disponible.")
+        return
+
+    batch = find_col(research, "batch_id", "batch_code")
+    product = find_col(research, "product_name", "product")
+    category = find_col(research, "product_category", "category")
+
+    research["_batch_view"] = (
+        research[batch].fillna("").astype(str)
+        if batch else ""
+    )
+
+    research["_product_view"] = (
+        research[product].fillna("Non renseigné").astype(str)
+        if product else "Non renseigné"
+    )
+
+    research["_category_view"] = (
+        research[category].fillna("Non renseigné").astype(str)
+        if category else "Non renseigné"
+    )
+
+    a, b, c = st.columns(3)
+
+    products = sorted(research["_product_view"].unique())
+    categories = sorted(research["_category_view"].unique())
+
+    with a:
+        selected_products = st.multiselect(
+            "Produit",
+            products,
+            default=products,
+            key="fnx_research_products"
+        )
+
+    with b:
+        selected_categories = st.multiselect(
+            "Catégorie",
+            categories,
+            default=categories,
+            key="fnx_research_categories"
+        )
+
+    with c:
+        search = st.text_input(
+            "Recherche Batch ID",
+            key="fnx_research_batch"
+        )
+
+    view = research[
+        research["_product_view"].isin(selected_products)
+    ]
+
+    view = view[
+        view["_category_view"].isin(selected_categories)
+    ]
+
+    if search.strip():
+        view = view[
+            view["_batch_view"].str.contains(
+                search.strip(),
+                case=False,
+                na=False
             )
-        elif research.empty:
-            st.info("En attente de données pour le contrôle qualité.")
-        else:
-            st.success("Aucune anomalie signalée par le rapport qualité.")
-
-        if isinstance(pipeline_status, dict) and pipeline_status:
-            st.markdown("**FOODNEXA System Pipeline**")
-            for name, status in pipeline_status.items():
-                if status is True:
-                    st.success(f"{name} — Disponible")
-                elif status is False:
-                    st.warning(f"{name} — Indisponible")
-                else:
-                    st.info(f"{name} — Statut non confirmé")
+        ]
 
     st.caption(
-        "FOODNEXA est un prototype expérimental de Food Safety Risk Intelligence. "
-        "Les indicateurs ne remplacent pas les analyses de laboratoire, "
-        "l'expertise scientifique ou les exigences réglementaires applicables."
+        f"{len(view)} observation(s). "
+        "Les valeurs manquantes restent non renseignées."
+    )
+
+    visible = view.drop(
+        columns=[
+            "_batch_view",
+            "_product_view",
+            "_category_view"
+        ],
+        errors="ignore"
+    )
+
+    st.dataframe(
+        visible,
+        use_container_width=True,
+        hide_index=True,
+        height=300
+    )
+
+    st.download_button(
+        "Exporter les observations CSV",
+        visible.to_csv(index=False).encode("utf-8-sig"),
+        "foodnexa_research.csv",
+        "text/csv",
+        key="fnx_research_download"
+    )
+
+
+def render_dashboard(
+    history_data=None,
+    research_data=None,
+    quality_report=None,
+    pipeline_status=None
+):
+
+    st.markdown("""
+    <style>
+    .block-container {
+        max-width:1450px;
+        padding-top:.7rem;
+        padding-bottom:1rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    df = prepare_history(history_data)
+
+    st.title("FOODNEXA | Food Safety & Research Intelligence")
+
+    st.caption(
+        "Interactive Dashboard — Risk Monitoring, Lot Intelligence "
+        "and Scientific Research"
+    )
+
+    with st.expander("🔎 Filtres du Dashboard", expanded=True):
+
+        a, b, c = st.columns([1, 1, 1.2])
+
+        products = (
+            sorted(df["_product"].unique())
+            if not df.empty else []
+        )
+
+        risk_options = [
+            "Faible",
+            "Modéré",
+            "Élevé",
+            "Données incomplètes",
+            "Non classé"
+        ]
+
+        with a:
+            selected_products = st.multiselect(
+                "Produits",
+                products,
+                default=products,
+                key="fnx_dashboard_products"
+            )
+
+        with b:
+            selected_risks = st.multiselect(
+                "Niveau de risque",
+                risk_options,
+                default=risk_options,
+                key="fnx_dashboard_risks"
+            )
+
+        with c:
+            batch_search = st.text_input(
+                "Recherche Batch ID",
+                key="fnx_dashboard_batch"
+            )
+
+    filtered = df.copy()
+
+    if not filtered.empty:
+
+        filtered = filtered[
+            filtered["_product"].isin(selected_products)
+        ]
+
+        filtered = filtered[
+            filtered["_risk"].isin(selected_risks)
+        ]
+
+        if batch_search.strip():
+            filtered = filtered[
+                filtered["_batch"].str.contains(
+                    batch_search.strip(),
+                    case=False,
+                    na=False
+                )
+            ]
+
+    total = len(filtered)
+
+    high = int(
+        (filtered["_risk"] == "Élevé").sum()
+    ) if total else 0
+
+    moderate = int(
+        (filtered["_risk"] == "Modéré").sum()
+    ) if total else 0
+
+    unique_lots = (
+        filtered["_batch"].replace("", pd.NA).nunique()
+        if total else 0
+    )
+
+    avg = (
+        filtered["_score"].mean()
+        if total and filtered["_score"].notna().any()
+        else None
+    )
+
+    k = st.columns(4)
+
+    with k[0]:
+        kpi("Analyses", total)
+
+    with k[1]:
+        kpi("Lots distincts", unique_lots)
+
+    with k[2]:
+        kpi("Risque élevé", high, RED)
+
+    with k[3]:
+        kpi(
+            "Score moyen",
+            f"{avg:.1f}/100" if avg is not None else "N/D"
+        )
+
+    st.divider()
+
+    st.subheader("📈 Surveillance des risques")
+
+    left, right = st.columns([1, 1.5])
+
+    with left:
+        risk_distribution(filtered)
+
+    with right:
+        risk_evolution(filtered)
+
+    st.divider()
+
+    st.subheader("📋 Historique des analyses")
+
+    if filtered.empty:
+        st.info("Aucune analyse ne correspond aux filtres.")
+    else:
+        table = pd.DataFrame({
+            "Date": filtered["_date"].dt.strftime(
+                "%Y-%m-%d %H:%M"
+            ).fillna("—"),
+            "Lot": filtered["_batch"],
+            "Produit": filtered["_product"],
+            "Risk Score": filtered["_score"].round(1),
+            "Niveau": filtered["_risk"]
+        })
+
+        st.dataframe(
+            table.sort_values("Date", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+            height=250
+        )
+
+        st.download_button(
+            "Exporter les analyses CSV",
+            table.to_csv(index=False).encode("utf-8-sig"),
+            "foodnexa_analyses.csv",
+            "text/csv",
+            key="fnx_history_download"
+        )
+
+    st.divider()
+
+    lot_intelligence(filtered)
+
+    st.divider()
+
+    compare_lots(filtered)
+
+    st.divider()
+
+    research_explorer(research_data)
+
+    with st.expander("Data Quality & System Status"):
+
+        st.metric(
+            "Research observations",
+            len(to_df(research_data))
+        )
+
+        if isinstance(quality_report, dict):
+            st.json(quality_report)
+
+        if isinstance(pipeline_status, dict):
+            st.json(pipeline_status)
+
+    st.caption(
+        "FOODNEXA est un prototype expérimental d'aide à la décision. "
+        "Les statistiques reflètent les données enregistrées. "
+        "Une donnée manquante n'est pas considérée comme zéro ou conforme. "
+        "Les résultats ne remplacent pas les analyses de laboratoire."
     )
