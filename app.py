@@ -3418,3 +3418,19 @@ section[data-testid="stSidebar"][data-collapsed="true"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# FOODNEXA — small sidebar logo position adjustment (preserve all existing pages)
+st.markdown("""
+<style>
+/* Reduce only the empty space above the sidebar logo. */
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 0.15rem !important;
+}
+.fnx-sidebar-brand {
+    margin-top: -2px !important;
+}
+.fnx-sidebar-logo {
+    margin-top: -2px !important;
+}
+</style>
+""", unsafe_allow_html=True)
