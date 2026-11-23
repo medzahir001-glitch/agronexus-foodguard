@@ -266,70 +266,57 @@ def _install_dashboard_style():
 
 
 def _render_donut(labels, values):
-    """Compact risk doughnut chart."""
+    """Interactive Plotly doughnut for risk distribution."""
     try:
-        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
     except ImportError:
-        st.bar_chart(pd.DataFrame({"Value": values}, index=labels), color="#238442")
+        st.error("Plotly n'est pas installé. Ajoutez plotly dans requirements.txt.")
         return
 
-    total = sum(values)
+    clean = [(str(label), int(value)) for label, value in zip(labels, values) if value and value > 0]
+    total = sum(value for _, value in clean)
     if total <= 0:
-        st.info("Aucune donnée de conformité disponible.")
+        st.info("Aucune évaluation disponible.")
         return
 
-    colors = ["#14532D", "#B91C1C", "#D9E8D9"]
-    actual = [
-        (label, value, color)
-        for label, value, color in zip(labels, values, colors)
-        if value > 0
-    ]
+    low_value = next((value for label, value in clean if label.casefold() in {"low risk", "faible"}), 0)
+    center_rate = (low_value / total) * 100
 
-    # Smaller canvas + fixed rendering width: chart will not stretch to column width.
-    fig, ax = plt.subplots(figsize=(1.65, 1.45), dpi=95)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    wedges, _ = ax.pie(
-        [item[1] for item in actual],
-        colors=[item[2] for item in actual],
-        startangle=90,
-        counterclock=False,
-        radius=0.68,
-        wedgeprops={"width": 0.22, "edgecolor": "white", "linewidth": 1.0},
+    fig = go.Figure(data=[go.Pie(
+        labels=[label for label, _ in clean],
+        values=[value for _, value in clean],
+        hole=0.68,
+        sort=False,
+        direction="clockwise",
+        marker=dict(colors=["#14532D", "#B91C1C", "#D9E8D9"][:len(clean)],
+                    line=dict(color="#FFFFFF", width=2)),
+        textinfo="none",
+        hovertemplate="<b>%{label}</b><br>Lots: %{value}<br>Part: %{percent}<extra></extra>",
+    )])
+    fig.update_layout(
+        height=235,
+        margin=dict(l=8, r=8, t=8, b=42),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="top", y=-0.08,
+                    xanchor="center", x=0.5, font=dict(size=10, color="#26352A")),
+        annotations=[dict(text=f"{center_rate:.0f}%<br><span style='font-size:10px'>Low risk</span>",
+                          x=0.5, y=0.5, showarrow=False,
+                          font=dict(size=22, color="#173B24", family="Arial"))],
+        font=dict(family="Arial", color="#26352A", size=10),
     )
-    ax.text(
-        0, 0, f"{(values[0] / total) * 100:.0f}%",
-        ha="center", va="center", fontsize=8, fontweight="bold",
-        color="#173B24",
-    )
-    ax.legend(
-        wedges,
-        [f"{item[0]} ({item[1]})" for item in actual],
-        loc="lower center",
-        bbox_to_anchor=(0.5, -0.10),
-        ncol=2 if len(actual) > 1 else 1,
-        frameon=False,
-        fontsize=5.2,
-        labelcolor="#26352A",
-        handlelength=0.8,
-        columnspacing=0.7,
-    )
-    ax.set_aspect("equal")
-    fig.subplots_adjust(left=0.04, right=0.96, top=0.96, bottom=0.25)
-    st.pyplot(fig, use_container_width=False)
-    plt.close(fig)
+    st.plotly_chart(fig, use_container_width=True,
+                    config={"displayModeBar": False, "responsive": True},
+                    key="foodnexa_risk_donut")
 
 
 def _render_category_bars(series):
-    """Compact circular doughnut chart for product categories."""
+    """Interactive Plotly doughnut for product categories."""
     try:
-        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
     except ImportError:
-        st.warning(
-            "Le graphique circulaire nécessite matplotlib. "
-            "Ajoutez matplotlib aux dépendances pour l'afficher."
-        )
+        st.error("Plotly n'est pas installé. Ajoutez plotly dans requirements.txt.")
         return
 
     series = series[series > 0].sort_values(ascending=False).head(7)
@@ -337,47 +324,35 @@ def _render_category_bars(series):
         st.info("Aucune catégorie renseignée.")
         return
 
-    palette = [
-        "#14532D", "#238442", "#3D9146", "#5DA957",
-        "#79B96C", "#9BCB8D", "#C5DFC0",
-    ]
-
-    # Smaller canvas + smaller radius + fixed rendering width.
-    fig, ax = plt.subplots(figsize=(1.8, 1.55), dpi=95)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    wedges, _ = ax.pie(
-        series.values,
-        colors=palette[:len(series)],
-        startangle=90,
-        counterclock=False,
-        radius=0.68,
-        wedgeprops={"width": 0.23, "edgecolor": "white", "linewidth": 1.0},
+    palette = ["#14532D", "#238442", "#3D9146", "#5DA957",
+               "#79B96C", "#9BCB8D", "#C5DFC0"]
+    fig = go.Figure(data=[go.Pie(
+        labels=[str(label) for label in series.index],
+        values=[int(value) for value in series.values],
+        hole=0.68,
+        sort=False,
+        direction="clockwise",
+        marker=dict(colors=palette[:len(series)],
+                    line=dict(color="#FFFFFF", width=2)),
+        textinfo="none",
+        hovertemplate="<b>%{label}</b><br>Observations: %{value}<br>Part: %{percent}<extra></extra>",
+    )])
+    fig.update_layout(
+        height=235,
+        margin=dict(l=8, r=8, t=8, b=42),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="top", y=-0.08,
+                    xanchor="center", x=0.5, font=dict(size=9, color="#26352A")),
+        annotations=[dict(text=f"{int(series.sum())}<br><span style='font-size:10px'>Observations</span>",
+                          x=0.5, y=0.5, showarrow=False,
+                          font=dict(size=20, color="#173B24", family="Arial"))],
+        font=dict(family="Arial", color="#26352A", size=10),
     )
-
-    ax.text(
-        0, 0, f"{int(series.sum())}\nObs.",
-        ha="center", va="center", fontsize=7,
-        fontweight="bold", color="#173B24",
-    )
-    ax.legend(
-        wedges,
-        [f"{str(label)[:16]} ({int(value)})"
-         for label, value in zip(series.index, series.values)],
-        loc="lower center",
-        bbox_to_anchor=(0.5, -0.10),
-        ncol=2 if len(series) > 1 else 1,
-        frameon=False,
-        fontsize=4.9,
-        labelcolor="#26352A",
-        handlelength=0.75,
-        columnspacing=0.65,
-    )
-    ax.set_aspect("equal")
-    fig.subplots_adjust(left=0.03, right=0.97, top=0.96, bottom=0.26)
-    st.pyplot(fig, use_container_width=False)
-    plt.close(fig)
+    st.plotly_chart(fig, use_container_width=True,
+                    config={"displayModeBar": False, "responsive": True},
+                    key="foodnexa_category_donut")
 
 
 def render_dashboard(history_data=None, research_data=None,
@@ -416,7 +391,7 @@ def render_dashboard(history_data=None, research_data=None,
 
     with left:
         st.markdown(
-            '<div class="fnx-section-title">Conformity Rate</div>',
+            '<div class="fnx-section-title">Risk Distribution</div>',
             unsafe_allow_html=True,
         )
         if not history.empty and risk_col:
