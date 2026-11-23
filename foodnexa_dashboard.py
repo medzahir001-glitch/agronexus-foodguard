@@ -174,7 +174,7 @@ def _install_dashboard_style():
         }
         .block-container {
           width:100% !important; max-width:none !important;
-          padding:1.35rem 2rem 2rem !important;
+          padding:.75rem 1.15rem 1.1rem !important;
         }
         [data-testid="stMainBlockContainer"] {
           width:100% !important; max-width:none !important;
@@ -199,12 +199,12 @@ def _install_dashboard_style():
           color:var(--fnx-ink);
         }
         [data-testid="stAppViewContainer"] .main h1 {
-          color:#14532D !important; font-size:2.05rem !important;
+          color:#14532D !important; font-size:1.55rem !important;
           font-weight:850 !important; letter-spacing:-1.1px !important;
           margin-bottom:.15rem !important;
         }
         [data-testid="stAppViewContainer"] .main h2 {
-          color:#174B2A !important; font-size:1.02rem !important;
+          color:#174B2A !important; font-size:.88rem !important;
           font-weight:800 !important;
         }
         [data-testid="stAppViewContainer"] .main h3 {
@@ -216,15 +216,15 @@ def _install_dashboard_style():
         }
         .fnx-kpi {
           background:#FFFFFF; border:1px solid var(--fnx-border);
-          border-radius:12px; padding:12px 14px; min-height:88px;
+          border-radius:12px; padding:8px 10px; min-height:70px;
           box-shadow:0 4px 14px rgba(20,65,35,.07); margin-bottom:12px;
         }
-        .fnx-kpi-label {font-size:.70rem; color:#536357; font-weight:700;}
-        .fnx-kpi-value {font-size:1.42rem; line-height:1.25; color:#14532D; font-weight:850;}
-        .fnx-kpi-detail {font-size:.66rem; color:#718075; margin-top:3px;}
+        .fnx-kpi-label {font-size:.62rem; color:#536357; font-weight:700;}
+        .fnx-kpi-value {font-size:1.15rem; line-height:1.25; color:#14532D; font-weight:850;}
+        .fnx-kpi-detail {font-size:.59rem; color:#718075; margin-top:3px;}
         .fnx-section-title {
           color:#174B2A; font-size:.94rem; font-weight:800;
-          margin:5px 0 7px; padding-bottom:5px;
+          margin:3px 0 5px; padding-bottom:4px;
           border-bottom:1px solid #DDE8DE;
         }
         div[data-testid="stDataFrame"] {
@@ -242,16 +242,22 @@ def _install_dashboard_style():
           box-shadow:0 2px 9px rgba(20,65,35,.06) !important;
         }
         div[data-testid="stMetric"] * {color:var(--fnx-navy) !important;}
-        .fnx-dashboard-gap {height:8px;}
+        .fnx-dashboard-gap {height:3px;}
+        [data-testid="stVerticalBlock"] {gap:.55rem !important;}
+        [data-testid="stHorizontalBlock"] {gap:.65rem !important;}
+        [data-testid="stMarkdownContainer"] p {font-size:.78rem;}
+        [data-testid="stCaptionContainer"] p {font-size:.66rem !important;}
+        [data-testid="stDataFrame"] {font-size:.70rem !important;}
+        div[data-testid="stMetric"] {padding:8px 10px !important;}
         .fnx-pill {
           display:inline-block; padding:4px 9px; border-radius:30px;
           background:#EAF5E9; color:#1B6633; font-size:.72rem; font-weight:750;
         }
         hr {border-color:#E1E9E1 !important; margin:.75rem 0 !important;}
         @media (max-width: 900px) {
-          .block-container {padding-left:1rem !important; padding-right:1rem !important;}
+          .block-container {padding-left:.65rem !important; padding-right:.65rem !important;}
           [data-testid="stSidebar"] {min-width:0 !important; max-width:none !important;}
-          [data-testid="stAppViewContainer"] .main h1 {font-size:1.9rem !important;}
+          [data-testid="stAppViewContainer"] .main h1 {font-size:1.5rem !important;}
         }
         </style>
         """,
@@ -280,7 +286,7 @@ def _render_donut(labels, values):
     ]
 
     # Smaller canvas + fixed rendering width: chart will not stretch to column width.
-    fig, ax = plt.subplots(figsize=(2.15, 1.85), dpi=105)
+    fig, ax = plt.subplots(figsize=(1.65, 1.45), dpi=95)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
 
@@ -289,12 +295,12 @@ def _render_donut(labels, values):
         colors=[item[2] for item in actual],
         startangle=90,
         counterclock=False,
-        radius=0.78,
-        wedgeprops={"width": 0.25, "edgecolor": "white", "linewidth": 1.2},
+        radius=0.68,
+        wedgeprops={"width": 0.22, "edgecolor": "white", "linewidth": 1.0},
     )
     ax.text(
         0, 0, f"{(values[0] / total) * 100:.0f}%",
-        ha="center", va="center", fontsize=10, fontweight="bold",
+        ha="center", va="center", fontsize=8, fontweight="bold",
         color="#173B24",
     )
     ax.legend(
@@ -304,13 +310,13 @@ def _render_donut(labels, values):
         bbox_to_anchor=(0.5, -0.10),
         ncol=2 if len(actual) > 1 else 1,
         frameon=False,
-        fontsize=6,
+        fontsize=5.2,
         labelcolor="#26352A",
         handlelength=0.8,
         columnspacing=0.7,
     )
     ax.set_aspect("equal")
-    fig.subplots_adjust(left=0.04, right=0.96, top=0.96, bottom=0.27)
+    fig.subplots_adjust(left=0.04, right=0.96, top=0.96, bottom=0.25)
     st.pyplot(fig, use_container_width=False)
     plt.close(fig)
 
@@ -337,7 +343,7 @@ def _render_category_bars(series):
     ]
 
     # Smaller canvas + smaller radius + fixed rendering width.
-    fig, ax = plt.subplots(figsize=(2.35, 2.0), dpi=105)
+    fig, ax = plt.subplots(figsize=(1.8, 1.55), dpi=95)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
 
@@ -346,13 +352,13 @@ def _render_category_bars(series):
         colors=palette[:len(series)],
         startangle=90,
         counterclock=False,
-        radius=0.78,
-        wedgeprops={"width": 0.27, "edgecolor": "white", "linewidth": 1.2},
+        radius=0.68,
+        wedgeprops={"width": 0.23, "edgecolor": "white", "linewidth": 1.0},
     )
 
     ax.text(
         0, 0, f"{int(series.sum())}\nObs.",
-        ha="center", va="center", fontsize=8.5,
+        ha="center", va="center", fontsize=7,
         fontweight="bold", color="#173B24",
     )
     ax.legend(
@@ -363,13 +369,13 @@ def _render_category_bars(series):
         bbox_to_anchor=(0.5, -0.10),
         ncol=2 if len(series) > 1 else 1,
         frameon=False,
-        fontsize=5.7,
+        fontsize=4.9,
         labelcolor="#26352A",
         handlelength=0.75,
         columnspacing=0.65,
     )
     ax.set_aspect("equal")
-    fig.subplots_adjust(left=0.03, right=0.97, top=0.96, bottom=0.28)
+    fig.subplots_adjust(left=0.03, right=0.97, top=0.96, bottom=0.26)
     st.pyplot(fig, use_container_width=False)
     plt.close(fig)
 
@@ -480,7 +486,7 @@ def render_dashboard(history_data=None, research_data=None,
             )
             st.dataframe(
                 activity_df.head(6), use_container_width=True,
-                hide_index=True, height=210,
+                hide_index=True, height=175,
             )
         else:
             st.info("Aucune activité récente.")
@@ -505,7 +511,7 @@ def render_dashboard(history_data=None, research_data=None,
                 pd.DataFrame(history_rows),
                 use_container_width=True,
                 hide_index=True,
-                height=245,
+                height=205,
             )
         else:
             st.info("Aucun historique disponible.")
