@@ -3479,3 +3479,24 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+
+# FOODNEXA — EXTRA LIFT: move the main banner closer to the Streamlit toolbar
+# This only adjusts vertical spacing; dashboard content and functionality stay unchanged.
+st.markdown("""
+<style>
+/* Remove the remaining top gap above the main banner. */
+[data-testid="stMainBlockContainer"],
+[data-testid="stMain"] .block-container,
+.main .block-container {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+/* Lift the hero banner by approximately 55px while keeping it below the toolbar. */
+.fnx-hero {
+    margin-top: -55px !important;
+    padding-top: 0 !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+</style>
+""", unsafe_allow_html=True)
